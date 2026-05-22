@@ -1,4 +1,14 @@
-#include "BananaBrain.h"
+﻿#include "ai_dc.h"
+
+namespace {
+	bool contains_opening_name(const std::string& value, std::initializer_list<const char*> openings)
+	{
+		for (const char* opening : openings) {
+			if (value == opening) return true;
+		}
+		return false;
+	}
+}
 
 void ProtossStrategy::pick_strategy(bool is_1v1)
 {
@@ -33,6 +43,27 @@ void ProtossStrategy::pick_strategy(bool is_1v1)
 			opening_ = result_store.pick_strategy({kPvU_1012Gate,kPvU_99Gate,kPvU_99ProxyGate,kPvU_4GateGoon,kPvU_Forge});
 		}
 	}
+}
+
+bool ProtossStrategy::force_opening(const std::string& opening)
+{
+	if (!contains_opening_name(opening, {
+		kPvZ_SairDt,kPvZ_1012Gate,kPvZ_1BaseSpeedZeal,kPvZ_2BaseSpeedZeal,kPvZ_Bisu,kPvZ_NeoBisu,
+		kPvZ_4Gate2Archon,kPvZ_5GateGoon,kPvZ_SairGoon,kPvZ_SairReaver,kPvZ_Stove,kPvZ_4GateGoon,
+		kPvZ_99Gate,kPvZ_99ProxyGate,kPvT_1012Gate,kPvT_2GateDt,kPvT_1GateDtExpo,kPvT_2GateRngExpo,
+		kPvT_1GateReaver,kPvT_1015Gate,kPvT_Bulldog,kPvT_12Nexus,kPvT_28Nexus,kPvT_32Nexus,kPvT_DtDrop,
+		kPvT_Stove,kPvT_4GateGoon,kPvT_99Gate,kPvT_99ProxyGate,kPvP_NZCore,kPvP_ZCore,kPvP_ZZCore,
+		kPvP_ZCoreZ,kPvP_1012Gate,kPvP_1012GateDt,kPvP_2GateDtExpo,kPvP_2GateReaver,kPvP_3GateRobo,
+		kPvP_3GateSpeedZeal,kPvP_4GateGoon,kPvP_12Nexus,kPvP_99Gate,kPvP_99ProxyGate,kPvU_1012Gate,
+		kPvU_99Gate,kPvU_99ProxyGate,kPvU_4GateGoon,kPvU_Forge,kPvZ_Plasma_Carriers,kPvT_Plasma_Carriers,
+		kPvP_Plasma_Carriers,kPvU_Plasma_Carriers,kPvZ_Plasma_99ProxyGate,kPvT_Plasma_99ProxyGate,
+		kPvP_Plasma_99ProxyGate,kPvU_Plasma_99ProxyGate
+	})) {
+		return false;
+	}
+
+	opening_ = opening;
+	return true;
 }
 
 ProtossStrategy::LateGameStrategy ProtossStrategy::determine_late_game_strategy()

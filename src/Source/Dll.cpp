@@ -1,7 +1,7 @@
-#include <BWAPI.h>
+﻿#include <BWAPI.h>
 #include <Windows.h>
 
-#include "BananaBrain.h"
+#include "ai_dc.h"
 
 extern "C" __declspec(dllexport) void gameInit(BWAPI::Game* game) { BWAPI::BroodwarPtr = game; }
 BOOL APIENTRY DllMain( HANDLE hModule, DWORD ul_reason_for_call, LPVOID lpReserved )
@@ -18,5 +18,5 @@ BOOL APIENTRY DllMain( HANDLE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 
 extern "C" __declspec(dllexport) BWAPI::AIModule* newAIModule()
 {
-  return new BananaBrain();
+  return new ai_dc();
 }

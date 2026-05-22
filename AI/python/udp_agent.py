@@ -1,7 +1,7 @@
-"""
-udp_agent.py  –  BananaBrain external agent over UDP
+﻿"""
+udp_agent.py  –  ai_dc external agent over UDP
 =====================================================
-Receives game events from BananaBrain.dll (port 37000),
+Receives game events from ai_dc.dll (port 37000),
 sends action responses back (port 37001).
 
 Run before or after launching StarCraft – the bridge silently drops

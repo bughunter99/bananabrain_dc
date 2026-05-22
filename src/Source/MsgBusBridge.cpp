@@ -1,9 +1,9 @@
-// winsock2.h MUST come before windows.h / BananaBrain.h to prevent
+﻿// winsock2.h MUST come before windows.h / ai_dc.h to prevent
 // winsock.h (pulled in by SDK 7.1a windows.h) from being included first.
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #pragma comment(lib, "ws2_32.lib")
-#include "BananaBrain.h"
+#include "ai_dc.h"
 
 // Verify our opaque sockaddr_in storage is the right size.
 static_assert(sizeof(sockaddr_in) == 16, "sockaddr_in size mismatch - update agent_addr_ array");
@@ -364,6 +364,40 @@ void MsgBusBridge::apply_action_object(const std::string& type,
 
     if (type == "leave_game") {
         Broodwar->leaveGame();
+        return;
+    }
+
+    if (type == "gather_minerals") {
+        gather_workers_minerals();
+        bwapi_log("gather_minerals command applied");
+        return;
+    }
+
+    if (type == "set_auto_play") {
+        set_manual_mode(false);
+        Broodwar->sendText("[ai_dc] 자율 플레이 시작");
+        bwapi_log("auto play enabled");
+        return;
+    }
+
+    if (type == "set_manual") {
+        set_manual_mode(true);
+        Broodwar->sendText("[ai_dc] 수동 제어 모드");
+        bwapi_log("manual mode enabled");
+        return;
+    }
+
+    if (type == "set_opening") {
+        auto it = sf.find("opening");
+        if (it != sf.end() && !it->second.empty()) {
+            bool applied = force_strategy_opening(it->second);
+            if (applied) {
+                Broodwar->sendText("Switch opening: %s", it->second.c_str());
+                bwapi_log("opening set to " + it->second);
+            } else {
+                bwapi_log("failed to set opening " + it->second);
+            }
+        }
         return;
     }
 

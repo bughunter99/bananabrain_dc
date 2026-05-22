@@ -4,6 +4,7 @@ class Strategy
 {
 public:
 	virtual void pick_strategy(bool is_1v1) = 0;
+	virtual bool force_opening(const std::string& opening) = 0;
 	virtual std::string mode() const = 0;
 	virtual std::string opening() const = 0;
 	virtual std::string late_game_strategy() const = 0;
@@ -156,6 +157,7 @@ public:
 	};
 	
 	void pick_strategy(bool is_1v1) override;
+	bool force_opening(const std::string& opening) override;
 	std::string mode() const override;
 	std::string opening() const override { return opening_; }
 	std::string late_game_strategy() const override;
@@ -353,6 +355,7 @@ public:
 	};
 	
 	void pick_strategy(bool is_1v1) override;
+	bool force_opening(const std::string& opening) override;
 	std::string mode() const override;
 	std::string opening() const override { return opening_; }
 	std::string late_game_strategy() const override { return "none"; }
@@ -523,6 +526,7 @@ public:
 	};
 	
 	void pick_strategy(bool is_1v1) override;
+	bool force_opening(const std::string& opening) override;
 	std::string mode() const override;
 	std::string opening() const override { return opening_; }
 	std::string late_game_strategy() const override { return "none"; }

@@ -1,4 +1,4 @@
-#include "BananaBrain.h"
+﻿#include "ai_dc.h"
 
 int MineralGas::can_pay_times(const MineralGas& o) const
 {

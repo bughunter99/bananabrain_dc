@@ -1,4 +1,14 @@
-#include "BananaBrain.h"
+﻿#include "ai_dc.h"
+
+namespace {
+	bool contains_opening_name(const std::string& value, std::initializer_list<const char*> openings)
+	{
+		for (const char* opening : openings) {
+			if (value == opening) return true;
+		}
+		return false;
+	}
+}
 
 void TerranStrategy::pick_strategy(bool is_1v1)
 {
@@ -38,6 +48,24 @@ void TerranStrategy::pick_strategy(bool is_1v1)
 			}
 			break;
 	}
+}
+
+bool TerranStrategy::force_opening(const std::string& opening)
+{
+	if (!contains_opening_name(opening, {
+		kTvZ_Fantasy,kTvZ_Sparks,kTvZ_Ayumi,kTvZ_1RaxFE,kTvZ_2Rax,kTvZ_14CC,kTvZ_3FactGoliath,
+		kTvZ_5FactGoliath,kTvZ_2PortWraithBio,kTvZ_2PortWraithMech,kTvZ_8RaxMech,kTvZ_BBS,kTvZ_ProxyBBS,
+		kTvT_2FactVults,kTvT_3FactVults,kTvT_1FactFE,kTvT_1RaxFE,kTvT_14CC,kTvT_1RaxFEBioMech,
+		kTvT_2RaxBioMech,kTvT_1PortWraith,kTvT_2PortWraith,kTvT_Proxy5Rax,kTvT_8RaxMech,kTvT_BBS,
+		kTvT_ProxyBBS,kTvP_2FactVults,kTvP_GundamRush,kTvP_JoyORush,kTvP_ShallowTwo,kTvP_DeepSix,
+		kTvP_SiegeExpand,kTvP_1FactFE,kTvP_1RaxFE,KTvP_14CC,kTvP_StrongFD,kTvP_101010FD,kTvP_BBS,
+		kTvP_ProxyBBS,kTvU_1Fact,kTvU_1FactMech,kTvU_2Rax,kTvU_BBS,kTvU_ProxyBBS
+	})) {
+		return false;
+	}
+
+	opening_ = opening;
+	return true;
 }
 
 std::string TerranStrategy::mode() const

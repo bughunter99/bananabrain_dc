@@ -1,4 +1,4 @@
-#include "BananaBrain.h"
+﻿#include "ai_dc.h"
 
 void OpponentModel::UnitSightingCollector::add_if_needed(Unit unit)
 {

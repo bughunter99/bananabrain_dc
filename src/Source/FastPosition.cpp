@@ -1,4 +1,4 @@
-#include "BananaBrain.h"
+﻿#include "ai_dc.h"
 
 FastPosition::FastPosition(const FastWalkPosition& walk_position) : x(walk_position.x * 8), y(walk_position.y * 8)
 {

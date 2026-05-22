@@ -1,0 +1,636 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ai_dc Web Bridge</title>
+    <style>
+        :root {
+            --bg: #f1ede2;
+            --panel: rgba(255, 252, 245, 0.86);
+            --panel-strong: rgba(255, 248, 234, 0.96);
+            --ink: #1e2430;
+            --muted: #5f6776;
+            --accent: #0057b8;
+            --accent-soft: #d6e7ff;
+            --danger: #b42318;
+            --line: rgba(30, 36, 48, 0.12);
+            --shadow: 0 18px 45px rgba(26, 31, 44, 0.12);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Segoe UI", "Malgun Gothic", sans-serif;
+            color: var(--ink);
+            background:
+                radial-gradient(circle at top left, rgba(0, 87, 184, 0.22), transparent 38%),
+                radial-gradient(circle at top right, rgba(193, 85, 38, 0.17), transparent 32%),
+                linear-gradient(135deg, #f3efe5 0%, #e8e2d4 100%);
+        }
+
+        .shell {
+            width: min(1360px, calc(100% - 32px));
+            margin: 24px auto;
+            display: grid;
+            gap: 18px;
+        }
+
+        .hero {
+            padding: 22px 24px;
+            border: 1px solid var(--line);
+            border-radius: 24px;
+            background: linear-gradient(135deg, rgba(255, 250, 240, 0.92), rgba(244, 238, 226, 0.86));
+            box-shadow: var(--shadow);
+        }
+
+        .hero h1 {
+            margin: 0;
+            font-size: clamp(28px, 4vw, 44px);
+            letter-spacing: -0.04em;
+        }
+
+        .hero p {
+            margin: 10px 0 0;
+            max-width: 760px;
+            color: var(--muted);
+            line-height: 1.5;
+        }
+
+        .grid {
+            display: grid;
+            gap: 18px;
+            grid-template-columns: 1.2fr 0.8fr;
+        }
+
+        .panel {
+            border: 1px solid var(--line);
+            border-radius: 22px;
+            background: var(--panel);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            backdrop-filter: blur(12px);
+        }
+
+        .panel-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            padding: 18px 20px 14px;
+            border-bottom: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        .panel-head h2 {
+            margin: 0;
+            font-size: 18px;
+            letter-spacing: -0.03em;
+        }
+
+        .panel-body {
+            padding: 18px 20px 20px;
+        }
+
+        .status-strip {
+            display: grid;
+            gap: 12px;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .stat-card {
+            padding: 14px 16px;
+            border-radius: 18px;
+            background: var(--panel-strong);
+            border: 1px solid var(--line);
+        }
+
+        .stat-card span {
+            display: block;
+            color: var(--muted);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .stat-card strong {
+            display: block;
+            margin-top: 6px;
+            font-size: 24px;
+            letter-spacing: -0.04em;
+        }
+
+        .two-col {
+            display: grid;
+            gap: 18px;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .log {
+            height: 620px;
+            overflow: auto;
+            padding-right: 8px;
+        }
+
+        .log-item {
+            padding: 12px 14px;
+            border-radius: 16px;
+            margin-bottom: 10px;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.6);
+        }
+
+        .log-meta {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 8px;
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .log-title {
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .payload {
+            margin: 0;
+            white-space: pre-wrap;
+            word-break: break-word;
+            font: 12px/1.5 Consolas, monospace;
+        }
+
+        .toolbar,
+        form {
+            display: grid;
+            gap: 12px;
+        }
+
+        label {
+            display: grid;
+            gap: 6px;
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        input,
+        select,
+        button,
+        textarea {
+            width: 100%;
+            padding: 12px 14px;
+            border-radius: 14px;
+            border: 1px solid rgba(30, 36, 48, 0.14);
+            font: inherit;
+            color: var(--ink);
+            background: rgba(255, 255, 255, 0.92);
+        }
+
+        button {
+            cursor: pointer;
+            border: 0;
+            background: linear-gradient(135deg, #0a5bd8, #0f78c8);
+            color: white;
+            font-weight: 700;
+            letter-spacing: 0.01em;
+        }
+
+        button.secondary {
+            background: linear-gradient(135deg, #f3ca6a, #d88932);
+            color: #1c1710;
+        }
+
+        button.ghost {
+            background: rgba(255, 255, 255, 0.55);
+            color: var(--ink);
+            border: 1px solid var(--line);
+        }
+
+        .button-grid {
+            display: grid;
+            gap: 10px;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        }
+
+        .strategy-card {
+            padding: 14px;
+            border-radius: 18px;
+            background: rgba(255, 252, 245, 0.92);
+            border: 1px solid var(--line);
+            display: grid;
+            gap: 10px;
+        }
+
+        .strategy-card h3 {
+            margin: 0;
+            font-size: 15px;
+        }
+
+        .strategy-card p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .tiny {
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .status-banner {
+            padding: 10px 12px;
+            border-radius: 14px;
+            background: var(--accent-soft);
+            color: var(--accent);
+            font-size: 13px;
+            border: 1px solid rgba(0, 87, 184, 0.18);
+        }
+
+        .status-banner.error {
+            background: rgba(180, 35, 24, 0.1);
+            color: var(--danger);
+            border-color: rgba(180, 35, 24, 0.18);
+        }
+
+        @media (max-width: 980px) {
+            .grid,
+            .two-col,
+            .status-strip {
+                grid-template-columns: 1fr;
+            }
+
+            .log {
+                height: 420px;
+            }
+        }
+    </style>
+</head>
+<body>
+<script>
+window.initialBridgeData = {{ initial_data|safe }};
+</script>
+<div class="shell">
+    <section class="hero">
+        <h1>ai_dc Web Bridge</h1>
+        <p>ZMQ 테스트 에이전트와 클라이언트를 Django 하나로 합친 제어 패널입니다. 이벤트를 실시간으로 보고, 채팅과 유닛 명령을 보내고, 대표 전략 버튼으로 opening 전환을 요청할 수 있습니다.</p>
+    </section>
+
+    <section class="panel">
+        <div class="panel-head">
+            <h2>실시간 상태</h2>
+            <div class="tiny" id="connection-text">대기 중</div>
+        </div>
+        <div class="panel-body">
+            <div class="status-strip">
+                <div class="stat-card"><span>Race</span><strong id="self-race">-</strong></div>
+                <div class="stat-card"><span>Opening</span><strong id="opening">-</strong></div>
+                <div class="stat-card"><span>Mode</span><strong id="mode">-</strong></div>
+            </div>
+            <div class="two-col" style="margin-top: 16px;">
+                <div class="stat-card"><span>Resources</span><strong id="resources">-</strong></div>
+                <div class="stat-card"><span>Frame</span><strong id="frame">-</strong></div>
+            </div>
+            <div class="status-banner" id="status-banner" style="margin-top: 16px;">브리지가 UDP 37000/37001 대기 상태로 올라오면 게임 이벤트를 바로 표시합니다.</div>
+        </div>
+    </section>
+
+    <section class="grid">
+        <div class="panel">
+            <div class="panel-head">
+                <h2>이벤트 로그</h2>
+                <button class="ghost" type="button" id="clear-log">화면 비우기</button>
+            </div>
+            <div class="panel-body">
+                <div class="log" id="log"></div>
+            </div>
+        </div>
+
+        <div class="toolbar">
+            <section class="panel">
+                <div class="panel-head"><h2>게임 제어</h2></div>
+                <div class="panel-body">
+                    <div id="control-mode-badge" style="display:inline-block;padding:4px 12px;border-radius:20px;font-size:.82em;font-weight:600;background:var(--accent-soft);color:var(--accent);margin-bottom:12px;">모드 미확인</div>
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                        <button type="button" id="btn-gather" class="secondary">💰 돈 모으기</button>
+                        <button type="button" id="btn-auto">▶ 알아서하기</button>
+                        <button type="button" id="btn-manual" class="ghost">⏸ 수동 제어</button>
+                    </div>
+                    <div class="tiny" style="margin-top:8px;color:var(--muted);">돈 모으기: 일꾼이 미네랄 채취 시작 (수동 모드 유지) | 알아서하기: AI 자율 진행</div>
+                </div>
+            </section>
+
+            <section class="panel">
+                <div class="panel-head"><h2>메시지 전송</h2></div>
+                <div class="panel-body">
+                    <form id="text-form">
+                        <label>게임 채팅
+                            <input id="text-input" name="text" placeholder="hello" maxlength="200">
+                        </label>
+                        <button type="submit">즉시 전송</button>
+                    </form>
+                </div>
+            </section>
+
+            <section class="panel">
+                <div class="panel-head"><h2>유닛 명령</h2></div>
+                <div class="panel-body">
+                    <form id="unit-form">
+                        <label>명령 타입
+                            <select id="unit-action-type" name="type">
+                                <option value="unit_move">Move</option>
+                                <option value="unit_stop">Stop</option>
+                                <option value="unit_attack_move">Attack Move</option>
+                                <option value="unit_attack_unit">Attack Unit</option>
+                            </select>
+                        </label>
+                        <label>유닛 ID
+                            <input id="unit-id" name="unit_id" type="number" min="0" placeholder="11">
+                        </label>
+                        <label id="xy-fields">좌표 X / Y
+                            <div class="two-col">
+                                <input id="coord-x" name="x" type="number" placeholder="3200">
+                                <input id="coord-y" name="y" type="number" placeholder="2400">
+                            </div>
+                        </label>
+                        <label id="target-unit-field" style="display:none;">타겟 유닛 ID
+                            <input id="target-unit-id" name="target_unit_id" type="number" min="0" placeholder="25">
+                        </label>
+                        <button class="secondary" type="submit">명령 보내기</button>
+                    </form>
+                </div>
+            </section>
+
+            <section class="panel">
+                <div class="panel-head"><h2>대표 전략</h2></div>
+                <div class="panel-body">
+                    <div class="tiny" id="strategy-caption">현재 종족에 맞는 대표 opening 을 표시합니다.</div>
+                    <div class="button-grid" id="strategy-grid" style="margin-top: 14px;"></div>
+                </div>
+            </section>
+        </div>
+    </section>
+</div>
+
+<script>
+const state = {
+    snapshot: window.initialBridgeData || { state: {}, events: [] },
+    eventSource: null,
+};
+
+function escapeHtml(value) {
+    return String(value)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+}
+
+function formatPayload(payload) {
+    return JSON.stringify(payload || {}, null, 2);
+}
+
+function updateHeader(currentState) {
+    document.getElementById('self-race').textContent = currentState.self_race || '-';
+    document.getElementById('opening').textContent = currentState.opening || '-';
+    document.getElementById('mode').textContent = currentState.mode || '-';
+    document.getElementById('frame').textContent = currentState.frame ?? '-';
+
+    const supply = currentState.supply_used && currentState.supply_total
+        ? `${currentState.supply_used}/${currentState.supply_total}`
+        : '-';
+    const minerals = currentState.minerals ?? '-';
+    const gas = currentState.gas ?? '-';
+    document.getElementById('resources').textContent = `M ${minerals} / G ${gas} / S ${supply}`;
+    document.getElementById('connection-text').textContent = currentState.connected
+        ? `연결됨 · 마지막 이벤트 ${currentState.last_event_at || '-'}`
+        : '대기 중';
+
+    const banner = document.getElementById('status-banner');
+    banner.classList.toggle('error', Boolean(currentState.last_error));
+    banner.textContent = currentState.last_error
+        ? `브리지 오류: ${currentState.last_error}`
+        : `${currentState.status || 'idle'} · action -> 127.0.0.1:37001`;
+}
+
+function renderStrategies(currentState) {
+    const race = currentState.self_race;
+    const strategies = currentState.current_strategies || (currentState.available_strategies || {})[race] || [];
+    const grid = document.getElementById('strategy-grid');
+    const caption = document.getElementById('strategy-caption');
+    caption.textContent = race
+        ? `${race} 대표 opening 버튼입니다. 클릭하면 즉시 set_opening 액션을 전송합니다.`
+        : '게임이 연결되면 현재 종족 기준 대표 opening 을 표시합니다.';
+    if (!strategies.length) {
+        grid.innerHTML = '<div class="tiny">전략 목록을 불러오는 중입니다.</div>';
+        return;
+    }
+
+    grid.innerHTML = strategies.map((item) => `
+        <article class="strategy-card">
+            <div>
+                <h3>${escapeHtml(item.label)}</h3>
+                <p>${escapeHtml(item.summary)}</p>
+            </div>
+            <button type="button" data-opening="${escapeHtml(item.opening)}">${escapeHtml(item.opening)}</button>
+        </article>
+    `).join('');
+
+    grid.querySelectorAll('button[data-opening]').forEach((button) => {
+        button.addEventListener('click', async () => {
+            const opening = button.getAttribute('data-opening');
+            await postJson('/api/action/strategy/', { opening });
+        });
+    });
+}
+
+function appendLog(event, prepend = true) {
+    const log = document.getElementById('log');
+    const item = document.createElement('article');
+    item.className = 'log-item';
+    item.innerHTML = `
+        <div class="log-meta">
+            <span class="log-title">${escapeHtml(event.event)}</span>
+            <span>${escapeHtml(event.source || 'game')} · frame ${escapeHtml(event.frame ?? -1)} · ${escapeHtml(event.time || '')}</span>
+        </div>
+        <pre class="payload">${escapeHtml(formatPayload(event.payload))}</pre>
+    `;
+    if (prepend) {
+        log.prepend(item);
+    } else {
+        log.append(item);
+    }
+}
+
+function renderSnapshot(snapshot) {
+    state.snapshot = snapshot;
+    updateHeader(snapshot.state || {});
+    renderStrategies(snapshot.state || {});
+    const mm = (snapshot.state || {}).manual_mode;
+    if (mm !== null && mm !== undefined) updateControlBadge(mm);
+    const log = document.getElementById('log');
+    log.innerHTML = '';
+    (snapshot.events || []).slice().reverse().forEach((event) => appendLog(event, false));
+    log.scrollTop = 0;
+}
+
+function applyIncomingEvent(event) {
+    appendLog(event, true);
+    const currentState = state.snapshot.state || {};
+    currentState.connected = true;
+    currentState.last_event_at = event.time;
+    currentState.frame = event.frame;
+
+    if (event.event === 'onStart') {
+        currentState.self_race = event.payload.self_race;
+        currentState.enemy_count = event.payload.enemy_count;
+        currentState.is_replay = event.payload.is_replay;
+        currentState.status = 'game connected';
+    }
+    if (event.event === 'onStart_initialized') {
+        currentState.is_1v1 = event.payload.is_1v1;
+        currentState.is_ffa = event.payload.is_ffa;
+        currentState.opening = event.payload.opening;
+    }
+    if (event.event === 'onFrame') {
+        currentState.minerals = event.payload.minerals;
+        currentState.gas = event.payload.gas;
+        currentState.supply_used = event.payload.supply_used;
+        currentState.supply_total = event.payload.supply_total;
+        currentState.mode = event.payload.mode;
+    }
+    if (event.event === 'onStrategyChanged') {
+        currentState.opening = event.payload.opening;
+        currentState.mode = event.payload.mode;
+    }
+    if (event.event === 'bridge_error' || event.event === 'bridge_parse_error') {
+        currentState.last_error = event.payload.message;
+    }
+    if (event.event === 'bridge_status') {
+        currentState.status = event.payload.message;
+    }
+    if (event.event === 'manual_mode_changed') {
+        currentState.manual_mode = event.payload.manual_mode === 'true' || event.payload.manual_mode === true;
+        updateControlBadge(currentState.manual_mode);
+    }
+    if (event.event === 'ui_action_sent' && event.payload.action.type === 'set_opening') {
+        currentState.opening = event.payload.action.opening;
+    }
+    if (currentState.self_race && currentState.available_strategies) {
+        currentState.current_strategies = currentState.available_strategies[currentState.self_race] || [];
+    }
+
+    state.snapshot.state = currentState;
+    updateHeader(currentState);
+    renderStrategies(currentState);
+}
+
+function updateControlBadge(manual) {
+    const badge = document.getElementById('control-mode-badge');
+    if (!badge) return;
+    if (manual) {
+        badge.textContent = '⏸ 수동 모드';
+        badge.style.background = '#fef3c7';
+        badge.style.color = '#92400e';
+    } else {
+        badge.textContent = '▶ 자율 플레이';
+        badge.style.background = '#d1fae5';
+        badge.style.color = '#065f46';
+    }
+}
+
+async function postJson(url, payload) {
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+    if (!response.ok || !data.ok) {
+        throw new Error(data.error || 'request failed');
+    }
+    return data;
+}
+
+function connectEvents() {
+    const source = new EventSource('/events/stream/');
+    state.eventSource = source;
+    source.onmessage = (message) => {
+        const data = JSON.parse(message.data);
+        if (data.kind === 'snapshot') {
+            renderSnapshot({ state: data.state, events: data.events });
+            return;
+        }
+        if (data.kind === 'event') {
+            applyIncomingEvent(data.event);
+        }
+    };
+    source.onerror = () => {
+        const banner = document.getElementById('status-banner');
+        banner.classList.add('error');
+        banner.textContent = 'SSE 연결이 잠시 끊겼습니다. 브라우저가 자동으로 재연결을 시도합니다.';
+    };
+}
+
+function setupForms() {
+    const textForm = document.getElementById('text-form');
+    const textInput = document.getElementById('text-input');
+    textForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const text = textInput.value.trim();
+        if (!text) return;
+        await postJson('/api/action/text/', { text });
+        textInput.value = '';
+    });
+
+    const actionType = document.getElementById('unit-action-type');
+    const xyFields = document.getElementById('xy-fields');
+    const targetField = document.getElementById('target-unit-field');
+    const refreshUnitFields = () => {
+        const type = actionType.value;
+        xyFields.style.display = (type === 'unit_move' || type === 'unit_attack_move') ? 'grid' : 'none';
+        targetField.style.display = type === 'unit_attack_unit' ? 'grid' : 'none';
+    };
+    actionType.addEventListener('change', refreshUnitFields);
+    refreshUnitFields();
+
+    const unitForm = document.getElementById('unit-form');
+    unitForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const payload = {
+            type: document.getElementById('unit-action-type').value,
+            unit_id: document.getElementById('unit-id').value,
+            x: document.getElementById('coord-x').value,
+            y: document.getElementById('coord-y').value,
+            target_unit_id: document.getElementById('target-unit-id').value,
+        };
+        await postJson('/api/action/unit/', payload);
+    });
+
+    document.getElementById('clear-log').addEventListener('click', () => {
+        document.getElementById('log').innerHTML = '';
+    });
+
+    document.getElementById('btn-gather').addEventListener('click', async () => {
+        await postJson('/api/action/control/', { type: 'gather_minerals' });
+    });
+    document.getElementById('btn-auto').addEventListener('click', async () => {
+        await postJson('/api/action/control/', { type: 'set_auto_play' });
+    });
+    document.getElementById('btn-manual').addEventListener('click', async () => {
+        await postJson('/api/action/control/', { type: 'set_manual' });
+    });
+}
+
+renderSnapshot(state.snapshot);
+setupForms();
+connectEvents();
+</script>
+</body>
+</html>

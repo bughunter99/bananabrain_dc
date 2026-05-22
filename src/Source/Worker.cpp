@@ -1,4 +1,4 @@
-#include "BananaBrain.h"
+﻿#include "ai_dc.h"
 
 WorkerAllocation::WorkerAllocation(const std::vector<std::pair<Unit,const BWEM::Base*>>& minerals,
 								   const std::vector<std::pair<Unit,const BWEM::Base*>>& refineries,

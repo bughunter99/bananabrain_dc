@@ -1,4 +1,14 @@
-#include "BananaBrain.h"
+﻿#include "ai_dc.h"
+
+namespace {
+	bool contains_opening_name(const std::string& value, std::initializer_list<const char*> openings)
+	{
+		for (const char* opening : openings) {
+			if (value == opening) return true;
+		}
+		return false;
+	}
+}
 
 void ZergStrategy::pick_strategy(bool is_1v1)
 {
@@ -38,6 +48,26 @@ void ZergStrategy::pick_strategy(bool is_1v1)
 			}
 			break;
 	}
+}
+
+bool ZergStrategy::force_opening(const std::string& opening)
+{
+	if (!contains_opening_name(opening, {
+		kZvZ_4Pool,kZvZ_5Pool,kZvZ_2HatchLing,kZvZ_3HatchLing,kZvZ_9HatchLing,kZvZ_9PoolSpire,
+		kZvZ_9Gas9Pool,kZvZ_9Gas10Pool,kZvZ_11Gas10Pool,kZvZ_OverGas,kZvZ_OverPool9Gas,kZvZ_10Hatch,
+		kZvZ_12Pool,KZvZ_12PoolMain,kZvZ_Hydra,kZvT_4Pool,kZvT_5Pool,kZvT_7Pool,kZvT_2HatchLing,
+		kZvT_3HatchLing,kZvT_9HatchLing,kZvT_2HatchMuta_12Hatch,kZvT_2HatchMuta_12Pool,kZvT_2_5HatchMuta,
+		kZvT_3HatchMuta,kZvT_CrazyZerg,kZvT_13PoolMuta,kZvT_MutaHydra,kZvT_9PoolLurker,kZvT_3HatchLurker,
+		kZvP_5Pool,kZvP_2HatchLing,kZvP_3HatchLing,kZvP_9HatchLing,kZvP_10HatchLing,kZvP_2HatchMuta,
+		kZvP_3HatchMuta,kZvP_2HatchHydra,kZvP_9734,kZvP_10PoolLurker,kZvP_3HatchLurker,kZvP_NeoSauron,
+		kZvP_4HatchBeforeGas,kZvP_5HatchBeforeGas,kZvP_6Hatch,kZvU_4Pool,kZvU_5Pool,kZvU_2HatchLing,
+		kZvU_3HatchLing,kZvU_9HatchLing,kZvU_9PoolSpeed,kZvU_11Pool
+	})) {
+		return false;
+	}
+
+	opening_ = opening;
+	return true;
 }
 
 std::string ZergStrategy::mode() const

@@ -1,4 +1,4 @@
-﻿#include "BananaBrain.h"
+﻿#include "ai_dc.h"
 #include "PythonBridge.h"
 
 namespace {
@@ -66,7 +66,7 @@ bool PythonEventBridge::start()
     api_.PyRun_SimpleStringFlags("sys.path.append('AI/python')", nullptr);
     {
         char bot_dll_path[MAX_PATH] = {};
-        HMODULE bot_module = GetModuleHandleA("BananaBrain.dll");
+        HMODULE bot_module = GetModuleHandleA("ai_dc.dll");
         if (bot_module && GetModuleFileNameA(bot_module, bot_dll_path, MAX_PATH) > 0) {
             char* last_slash = strrchr(bot_dll_path, '\\');
             if (last_slash) {

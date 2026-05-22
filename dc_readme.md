@@ -86,6 +86,19 @@ StarCraft: Brood War 환경에서 동작하는 고도화된 멀티-종족(Protos
 
 ---
 
+## Web Bridge 진행 메모
+
+- `AI/python/web_bridge/` 에 Django 기반 통합 브리지를 추가했습니다.
+- 기존 `zmq_agent.py` + `zmq_test_client.py` 역할을 `UDP 37000/37001 + Django SSE UI` 로 합쳤습니다.
+- 브라우저 UI에서 이벤트 로그 확인, 채팅 전송, 유닛 명령 전송, 대표 전략 버튼 클릭이 가능하도록 구성했습니다.
+- 전략 버튼은 C++ `MsgBusBridge` 에 `set_opening` 액션을 추가해 동작하도록 연결했습니다.
+- Django 자체 검증은 `python manage.py check` 로 통과했습니다.
+- C++ 전체 빌드는 현재 셸에서 `msbuild` 가 없어 아직 검증하지 못했습니다.
+- `run_web_bridge.ps1` 는 `C:\Users\dc99.lee\Envs\v1\Scripts\python.exe` 가 있으면 해당 인터프리터를 우선 사용하도록 보강했습니다.
+- `v1` 환경(Django 5.2.8)에서 런처 실행 후 `http://127.0.0.1:8013/api/state/` 가 HTTP 200 으로 정상 응답함을 재검증했습니다.
+
+---
+
 ## 📁 Project Structure
 
 아래는 실제 리포지토리 구조를 기준으로 정리한 상세 트리입니다.

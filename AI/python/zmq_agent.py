@@ -1,5 +1,5 @@
-"""
-zmq_agent.py  –  BananaBrain ZMQ bridge agent
+﻿"""
+zmq_agent.py  –  ai_dc ZMQ bridge agent
 ===============================================
 
 역할
@@ -172,7 +172,7 @@ def default_handle(event_name: str, frame: int, payload: dict) -> object:
 # ---------------------------------------------------------------------------
 def main() -> None:
     log("=" * 60)
-    log("BananaBrain ZMQ Bridge Agent 시작")
+    log("ai_dc ZMQ Bridge Agent 시작")
     log(f"  UDP 이벤트 수신  : {UDP_HOST}:{UDP_EVENT_PORT}  ← C++ ai_dc.dll")
     log(f"  UDP 액션 전송    : {UDP_HOST}:{UDP_ACTION_PORT}  → C++ ai_dc.dll")
     log(f"  ZMQ PUB (이벤트) : tcp://*:{ZMQ_PUB_PORT}       → 외부 구독자")
