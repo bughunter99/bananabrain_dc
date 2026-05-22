@@ -1,0 +1,35 @@
+이 폴더내 프로그램 소스를 보고 뭐하는 프로그램인지 파악해줘.
+
+
+응 그래 파이썬 에이전트에 이벤트 전달하고 수신하는게 아니라,
+다른 msg bus를 통해서 할 순 없을까?
+zmq를 udp 형식으로 한다던지 말이야.
+python dependent하지 않게하려고.
+
+
+여기 프로젝트 이름을 ai_dc.vcxproj로 바꿔주고, sln이름도 바꿔주고,
+결과물도 ai_dc.dll 로 나오게 바꿔줘
+
+
+빌드까지 해줘. ai_dc.dll 나오게. 디버그모드는 ai_dcd.dll 로
+
+
+파이썬 에이전트로 여기 zmq의 데이터를 읽고, 데이터를 전달하는 것 만들어줘.
+테스트 해볼께. 대충 zmq 설정은 알아서 해줘. subject이나 포트나 그런거.
+뭘로 했는진 나한테 알려주고.
+
+
+
+
+① python AI/python/zmq_agent.py       ← 먼저 (UDP 포트 37000 바인드)
+② python AI/python/zmq_test_client.py ← 두 번째 (ZMQ SUB 연결)
+③ StarCraft + ai_dc.dll 게임 기동      ← 마지막
+
+
+
+테스트 클라이언트에서 t hello 입력하면 게임 채팅창에 "hello" 전송, 
+m 11 3200 2400 입력하면 유닛 이동 명령이 C++로 전달됩니다.
+
+
+
+여기 .gitignore 파일 보강해줘. 여기서 소스말고 결과 파일은 안 올라가게 손봐줘.

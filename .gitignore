@@ -1,0 +1,60 @@
+# Build output directories
+**/Debug/
+**/Release/
+
+# Visual Studio generated files
+.vs/
+*.user
+*.suo
+*.aps
+*.ncb
+*.sdf
+*.opensdf
+*.cachefile
+ipch/
+*.VC.db
+*.VC.VC.opendb
+
+# Compiled object/intermediate files
+*.obj
+*.pch
+*.pdb
+*.idb
+*.ilk
+*.exp
+*.iobj
+*.ipdb
+*.lib
+*.map
+*.tlog/
+*.log
+*.recipe
+*.FileListAbsolute.txt
+vcpkg.applocal.log
+
+# Build output binaries (keep source, exclude compiled output)
+src/Release/*.dll
+src/Release/*.exe
+src/Debug/*.dll
+src/Debug/*.exe
+
+# Root-level build logs
+build_release.log
+build_debug.log
+*.build.log
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+
+# macOS metadata
+.DS_Store
+
+# Windows thumbnails
+Thumbs.db
+
+
+.vs/
+**/ipch/
+
