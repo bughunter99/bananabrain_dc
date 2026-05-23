@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>전략 스크립트 에디터 — DC Bot</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#1a1a2e;color:#e0e0e0;font-family:'Consolas','Courier New',monospace;height:100vh;display:flex;flex-direction:column}
+  #header{background:#16213e;padding:8px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #0f3460}
+  #header h1{font-size:14px;color:#4fc3f7;flex:1}
+  #header a{color:#90caf9;font-size:12px;text-decoration:none}
+  #header a:hover{color:#fff}
+  #main{display:flex;flex:1;overflow:hidden}
+  /* Left sidebar */
+  #sidebar{width:220px;background:#16213e;border-right:1px solid #0f3460;overflow-y:auto;flex-shrink:0}
+  .race-group{padding:0}
+  .race-header{background:#0f3460;color:#4fc3f7;font-size:11px;font-weight:bold;padding:5px 10px;letter-spacing:.5px;text-transform:uppercase}
+  .strategy-item{padding:6px 10px;font-size:11px;cursor:pointer;border-bottom:1px solid #1e2a4a;transition:background .15s}
+  .strategy-item:hover{background:#1e3a5f}
+  .strategy-item.active{background:#1565c0;color:#fff}
+  .strategy-item .item-label{color:#cfe2ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .strategy-item .item-id{color:#546e7a;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .no-script{color:#f06292}
+  /* Editor area */
+  #editor-pane{flex:1;display:flex;flex-direction:column;overflow:hidden}
+  #editor-toolbar{background:#16213e;padding:6px 12px;display:flex;align-items:center;gap:8px;border-bottom:1px solid #0f3460;flex-shrink:0}
+  #editor-title{flex:1;font-size:12px;color:#4fc3f7}
+  .btn{padding:4px 12px;border:none;border-radius:3px;cursor:pointer;font-size:12px;font-weight:bold}
+  .btn-run{background:#2e7d32;color:#fff}
+  .btn-run:hover{background:#388e3c}
+  .btn-save{background:#1565c0;color:#fff}
+  .btn-save:hover{background:#1976d2}
+  .btn-new{background:#6a1b9a;color:#fff}
+  .btn-new:hover{background:#7b1fa2}
+  #editor-wrap{flex:1;padding:8px;overflow:hidden}
+  #code-editor{width:100%;height:100%;background:#0d1117;color:#c9d1d9;border:1px solid #30363d;border-radius:4px;
+    font-family:'Consolas','Courier New',monospace;font-size:13px;line-height:1.6;
+    padding:10px;resize:none;outline:none;tab-size:4}
+  #status-bar{background:#0f3460;padding:3px 12px;font-size:11px;color:#78909c;flex-shrink:0}
+  #status-bar .ok{color:#66bb6a}
+  #status-bar .err{color:#ef5350}
+  /* Result log */
+  #log-pane{height:120px;background:#0d1117;border-top:1px solid #1e2a4a;overflow-y:auto;flex-shrink:0;padding:4px 8px}
+  #log-pane .log-entry{font-size:11px;color:#78909c;padding:1px 0}
+  #log-pane .log-ok{color:#66bb6a}
+  #log-pane .log-err{color:#ef5350}
+  #log-pane .log-info{color:#4fc3f7}
+</style>
+</head>
+<body>
+<div id="header">
+  <h1>🐛 전략 스크립트 에디터</h1>
+  <a href="/">← 대시보드</a>
+</div>
+<div id="main">
+  <div id="sidebar" id="sidebar"></div>
+  <div id="editor-pane">
+    <div id="editor-toolbar">
+      <span id="editor-title">스크립트를 선택하세요</span>
+      <button class="btn btn-new" onclick="newScript()">+ 새 스크립트</button>
+      <button class="btn btn-save" onclick="saveScript()">💾 저장</button>
+      <button class="btn btn-run" onclick="runScript()">▶ 실행</button>
+    </div>
+    <div id="editor-wrap">
+      <textarea id="code-editor" placeholder="좌측에서 전략 스크립트를 선택하세요.
+
+# 스크립트 형식:
+# def run(ctx):
+#     ctx.set_opening('PvZ_10/12gate')
+#     ctx.log('오프닝 시작')
+#     ctx.wait(60)
+#     ctx.control('gather_minerals')
+" spellcheck="false"></textarea>
+    </div>
+    <div id="status-bar"><span id="status-msg">준비</span></div>
+    <div id="log-pane" id="log-pane"></div>
+  </div>
+</div>
+
+<script>
+const catalog = {{ catalog_json|safe }};
+let currentId = null;
+
+// Build sidebar
+(function buildSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const byRace = {};
+  catalog.forEach(s => {
+    if (!byRace[s.race]) byRace[s.race] = [];
+    byRace[s.race].push(s);
+  });
+  Object.entries(byRace).forEach(([race, items]) => {
+    const grp = document.createElement('div');
+    grp.className = 'race-group';
+    const hdr = document.createElement('div');
+    hdr.className = 'race-header';
+    hdr.textContent = race;
+    grp.appendChild(hdr);
+    items.forEach(item => {
+      const el = document.createElement('div');
+      el.className = 'strategy-item' + (item.exists ? '' : ' no-script');
+      el.dataset.id = item.script_id;
+      el.innerHTML = `<div class="item-label">${item.label}</div><div class="item-id">${item.script_id}</div>`;
+      el.onclick = () => loadScript(item.script_id, item.label);
+      grp.appendChild(el);
+    });
+    sidebar.appendChild(grp);
+  });
+})();
+
+function setActive(id) {
+  document.querySelectorAll('.strategy-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.id === id);
+  });
+}
+
+function loadScript(id, label) {
+  fetch('/api/scripts/' + encodeURIComponent(id) + '/')
+    .then(r => r.json())
+    .then(data => {
+      if (data.ok) {
+        currentId = id;
+        document.getElementById('code-editor').value = data.content;
+        document.getElementById('editor-title').textContent = label + '  (' + id + '.py)';
+        setStatus('로드 완료', 'ok');
+        setActive(id);
+      } else {
+        // Script file not found — offer template
+        currentId = id;
+        document.getElementById('code-editor').value = defaultTemplate(id, label);
+        document.getElementById('editor-title').textContent = '[새 파일] ' + label + '  (' + id + '.py)';
+        setStatus('새 스크립트 (저장 전)', '');
+        setActive(id);
+      }
+    })
+    .catch(err => setStatus('로드 실패: ' + err, 'err'));
+}
+
+function defaultTemplate(id, label) {
+  return `"""${label}"""\n\ndef run(ctx):\n    # ctx.set_opening("...")\n    ctx.log("${label} 시작")\n`;
+}
+
+function saveScript() {
+  if (!currentId) { setStatus('저장할 스크립트를 선택하세요', 'err'); return; }
+  const content = document.getElementById('code-editor').value;
+  fetch('/api/scripts/' + encodeURIComponent(currentId) + '/', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({content: content})
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) {
+      setStatus('저장 완료', 'ok');
+      addLog('💾 저장됨: ' + currentId, 'ok');
+      // mark sidebar item as existing
+      const el = document.querySelector(`.strategy-item[data-id="${currentId}"]`);
+      if (el) el.classList.remove('no-script');
+    } else {
+      setStatus('저장 실패: ' + data.error, 'err');
+    }
+  })
+  .catch(err => setStatus('저장 오류: ' + err, 'err'));
+}
+
+function runScript() {
+  if (!currentId) { setStatus('실행할 스크립트를 선택하세요', 'err'); return; }
+  fetch('/api/scripts/' + encodeURIComponent(currentId) + '/run/', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: '{}'
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) {
+      setStatus('실행 시작됨', 'ok');
+      addLog('▶ 실행: ' + currentId, 'ok');
+    } else {
+      setStatus('실행 실패: ' + data.error, 'err');
+      addLog('✗ 실패: ' + data.error, 'err');
+    }
+  })
+  .catch(err => setStatus('실행 오류: ' + err, 'err'));
+}
+
+function newScript() {
+  const id = prompt('새 스크립트 ID (예: PvZ_custom):');
+  if (!id || !/^[A-Za-z0-9_\-\.]+$/.test(id)) {
+    alert('유효하지 않은 ID. 영문자, 숫자, _, -, . 만 사용 가능합니다.');
+    return;
+  }
+  currentId = id;
+  document.getElementById('code-editor').value = defaultTemplate(id, id);
+  document.getElementById('editor-title').textContent = '[새 파일] ' + id + '.py';
+  setStatus('새 스크립트 — 저장 버튼으로 생성', '');
+}
+
+function setStatus(msg, cls) {
+  const el = document.getElementById('status-msg');
+  el.textContent = msg;
+  el.className = cls || '';
+}
+
+function addLog(msg, cls) {
+  const pane = document.getElementById('log-pane');
+  const div = document.createElement('div');
+  div.className = 'log-entry ' + (cls === 'ok' ? 'log-ok' : cls === 'err' ? 'log-err' : 'log-info');
+  div.textContent = new Date().toLocaleTimeString() + '  ' + msg;
+  pane.appendChild(div);
+  pane.scrollTop = pane.scrollHeight;
+}
+
+// SSE: listen for script_log events from the bot
+const es = new EventSource('/events/stream/');
+es.onmessage = function(e) {
+  try {
+    const msg = JSON.parse(e.data);
+    const ev = msg.event || msg;
+    if (ev && ev.event === 'script_log') {
+      const p = ev.payload || {};
+      addLog('[' + (p.script_id || '?') + '] ' + (p.message || ''), 'info');
+    }
+  } catch(_) {}
+};
+
+// URL hash auto-load support
+window.addEventListener('DOMContentLoaded', () => {
+  const hash = decodeURIComponent(window.location.hash.replace('#', ''));
+  if (hash) {
+    const item = catalog.find(c => c.script_id === hash);
+    if (item) loadScript(item.script_id, item.label);
+  }
+});
+document.getElementById('code-editor').addEventListener('keydown', function(e) {
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const start = this.selectionStart;
+    const end = this.selectionEnd;
+    this.value = this.value.substring(0, start) + '    ' + this.value.substring(end);
+    this.selectionStart = this.selectionEnd = start + 4;
+  }
+});
+</script>
+</body>
+</html>

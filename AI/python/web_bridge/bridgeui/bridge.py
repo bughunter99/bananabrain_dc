@@ -21,6 +21,12 @@ REPRESENTATIVE_STRATEGIES = {
         {"label": "PvT 12 Nexus", "opening": "PvT_12nexus", "summary": "빠른 확장 중심"},
         {"label": "PvP 3 Gate Robo", "opening": "PvP_3gaterobo", "summary": "로보틱스 압박"},
         {"label": "PvU Forge", "opening": "PvU_forge", "summary": "범용 포지 기반 수비"},
+        {"label": "포지 더블넥", "opening": "PvU_forge_double_nexus", "summary": "포토캐논 수비 후 빠른 넥서스 확보"},
+        {"label": "질럿 러쉬", "opening": "PvU_zealot_rush", "summary": "가스 생략, 8~9 파일런 후 질럿 다수 생산"},
+        {"label": "다크 템플러", "opening": "PvU_dark_templar", "summary": "은폐 DT로 탐지 강제 및 피해"},
+        {"label": "리버 드랍", "opening": "PvU_reaver_drop", "summary": "셔틀+리버로 본진 일꾼/건물 파괴"},
+        {"label": "한방 러쉬", "opening": "PvU_one_punch", "summary": "질럿+스톰+아콘+리버 올인 타이밍"},
+        {"label": "앞마당 멀티", "opening": "PvU_natural_expand", "summary": "앞마당 넥서스 빠른 확장으로 자원 우위 확보"},
     ],
     "Terran": [
         {"label": "TvZ 1 Rax FE", "opening": "TvZ_1raxfe", "summary": "정석 빠른 확장"},
@@ -28,6 +34,12 @@ REPRESENTATIVE_STRATEGIES = {
         {"label": "TvT 1 Fact FE", "opening": "TvT_1factfe", "summary": "안정적인 메카 전개"},
         {"label": "TvP Siege Expand", "opening": "TvP_siegeexpand", "summary": "탱크 중심 운영"},
         {"label": "TvU 1 Fact", "opening": "TvU_1fact", "summary": "범용 팩토리 시작"},
+        {"label": "벙커링", "opening": "TvU_bunkering", "summary": "앞마당/입구 벙커+SCV 초반 올인"},
+        {"label": "FD 테란", "opening": "TvU_fd", "summary": "마린+메딕 견제 후 드랍쉽/벌처 확보"},
+        {"label": "메카닉", "opening": "TvU_mechanic", "summary": "탱크+벌처+골리앗 기계화 운영"},
+        {"label": "SK 테란", "opening": "TvU_sk", "summary": "바이오닉+베슬 마나 스킬 조합"},
+        {"label": "레이트 메카닉", "opening": "TvU_late_mechanic", "summary": "수비 후 발키리/배틀크루저 후반 물량"},
+        {"label": "앞마당 멀티", "opening": "TvU_natural_expand", "summary": "앞마당 커맨드센터 빠른 확장으로 자원 우위 확보"},
     ],
     "Zerg": [
         {"label": "ZvZ 9 Pool Spire", "opening": "ZvZ_9poolspire", "summary": "뮤탈 전환형"},
@@ -35,6 +47,12 @@ REPRESENTATIVE_STRATEGIES = {
         {"label": "ZvT 9 Pool Lurker", "opening": "ZvT_9poollurker", "summary": "러커 타이밍"},
         {"label": "ZvP 9734", "opening": "ZvP_9734", "summary": "대표 히드라 타이밍"},
         {"label": "ZvU 9 Pool Speed", "opening": "ZvU_9poolspeed", "summary": "범용 스피드링"},
+        {"label": "3햇 빌드", "opening": "ZvU_3hatch", "summary": "해처리 3개 빠른 확보, 저글링+드론 물량"},
+        {"label": "저글링 럴커", "opening": "ZvU_ling_lurker", "summary": "저글링 기동성+럴커 범위공격 조합"},
+        {"label": "뮤탈 짤짤이", "opening": "ZvU_muta_micro", "summary": "뮤탈 다수로 일꾼 학살 및 본진 교란"},
+        {"label": "디파저그", "opening": "ZvU_defiler", "summary": "다크 스웜+플레이그로 방어선 붕괴"},
+        {"label": "퀸 둥지 러쉬", "opening": "ZvU_queen_lurker", "summary": "퀸 인스네어+브루들링으로 라인 붕괴"},
+        {"label": "앞마당 멀티", "opening": "ZvU_natural_expand", "summary": "앞마당 해처리 빠른 확장으로 자원 우위 확보"},
     ],
 }
 

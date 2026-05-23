@@ -3,378 +3,436 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>ai_dc Web Bridge</title>
+    <title>ai_dc Bridge</title>
     <style>
         :root {
-            --bg: #f1ede2;
-            --panel: rgba(255, 252, 245, 0.86);
-            --panel-strong: rgba(255, 248, 234, 0.96);
-            --ink: #1e2430;
-            --muted: #5f6776;
-            --accent: #0057b8;
-            --accent-soft: #d6e7ff;
-            --danger: #b42318;
-            --line: rgba(30, 36, 48, 0.12);
-            --shadow: 0 18px 45px rgba(26, 31, 44, 0.12);
+            --bg: #181b22;
+            --left: #1c2029;
+            --panel: #22262f;
+            --border: rgba(255,255,255,0.07);
+            --ink: #c8cdd8;
+            --muted: #5a6070;
+            --accent: #3b82f6;
+            --accent-dim: rgba(59,130,246,0.14);
+            --danger: #ef4444;
+            --ok: #22c55e;
+            --warn: #f59e0b;
         }
-
-        * {
-            box-sizing: border-box;
-        }
-
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            margin: 0;
-            min-height: 100vh;
-            font-family: "Segoe UI", "Malgun Gothic", sans-serif;
+            font-family: "Segoe UI", "Malgun Gothic", monospace;
+            font-size: 11px;
             color: var(--ink);
-            background:
-                radial-gradient(circle at top left, rgba(0, 87, 184, 0.22), transparent 38%),
-                radial-gradient(circle at top right, rgba(193, 85, 38, 0.17), transparent 32%),
-                linear-gradient(135deg, #f3efe5 0%, #e8e2d4 100%);
-        }
-
-        .shell {
-            width: min(1360px, calc(100% - 32px));
-            margin: 24px auto;
-            display: grid;
-            gap: 18px;
-        }
-
-        .hero {
-            padding: 22px 24px;
-            border: 1px solid var(--line);
-            border-radius: 24px;
-            background: linear-gradient(135deg, rgba(255, 250, 240, 0.92), rgba(244, 238, 226, 0.86));
-            box-shadow: var(--shadow);
-        }
-
-        .hero h1 {
-            margin: 0;
-            font-size: clamp(28px, 4vw, 44px);
-            letter-spacing: -0.04em;
-        }
-
-        .hero p {
-            margin: 10px 0 0;
-            max-width: 760px;
-            color: var(--muted);
-            line-height: 1.5;
-        }
-
-        .grid {
-            display: grid;
-            gap: 18px;
-            grid-template-columns: 1.2fr 0.8fr;
-        }
-
-        .panel {
-            border: 1px solid var(--line);
-            border-radius: 22px;
-            background: var(--panel);
-            box-shadow: var(--shadow);
+            background: var(--bg);
+            height: 100vh;
             overflow: hidden;
-            backdrop-filter: blur(12px);
-        }
-
-        .panel-head {
             display: flex;
-            justify-content: space-between;
+            flex-direction: column;
+        }
+        #topbar {
+            display: flex;
             align-items: center;
-            gap: 12px;
-            padding: 18px 20px 14px;
-            border-bottom: 1px solid var(--line);
-            background: rgba(255, 255, 255, 0.4);
+            gap: 0;
+            padding: 4px 8px;
+            background: #12141a;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+            font-size: 10px;
+            white-space: nowrap;
+            overflow: hidden;
         }
-
-        .panel-head h2 {
-            margin: 0;
-            font-size: 18px;
-            letter-spacing: -0.03em;
+        #topbar .title {
+            font-size: 11px;
+            font-weight: 700;
+            color: #e2e8f0;
+            margin-right: 10px;
+            flex-shrink: 0;
         }
-
-        .panel-body {
-            padding: 18px 20px 20px;
+        #topbar .dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--muted);
+            flex-shrink: 0;
+            margin-right: 5px;
         }
-
-        .status-strip {
-            display: grid;
-            gap: 12px;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-        }
-
-        .stat-card {
-            padding: 14px 16px;
-            border-radius: 18px;
-            background: var(--panel-strong);
-            border: 1px solid var(--line);
-        }
-
-        .stat-card span {
-            display: block;
-            color: var(--muted);
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-        }
-
-        .stat-card strong {
-            display: block;
-            margin-top: 6px;
-            font-size: 24px;
-            letter-spacing: -0.04em;
-        }
-
-        .two-col {
-            display: grid;
-            gap: 18px;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-
-        .log {
-            height: 620px;
-            overflow: auto;
-            padding-right: 8px;
-        }
-
-        .log-item {
-            padding: 12px 14px;
-            border-radius: 16px;
-            margin-bottom: 10px;
-            border: 1px solid var(--line);
-            background: rgba(255, 255, 255, 0.6);
-        }
-
-        .log-meta {
+        #topbar .dot.on { background: var(--ok); }
+        .sb-item { color: var(--muted); margin-right: 8px; }
+        .sb-item span { color: var(--ink); font-weight: 600; }
+        #sb-last { margin-left: auto; color: var(--muted); font-size: 9px; }
+        #sysinfo {
             display: flex;
-            justify-content: space-between;
             gap: 8px;
-            margin-bottom: 8px;
-            font-size: 12px;
+            font-size: 9px;
             color: var(--muted);
+            margin-left: 14px;
+            flex-shrink: 0;
         }
-
-        .log-title {
-            font-weight: 700;
+        #sysinfo .si { white-space: nowrap; }
+        #sysinfo .si span { color: var(--ink); font-weight: 600; }
+        #status-msg {
+            font-size: 9px;
+            padding: 0 6px;
+            border-radius: 8px;
+            background: var(--accent-dim);
             color: var(--accent);
+            margin-left: 6px;
+            flex-shrink: 0;
+            max-width: 180px;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
-
-        .payload {
-            margin: 0;
-            white-space: pre-wrap;
-            word-break: break-word;
-            font: 12px/1.5 Consolas, monospace;
-        }
-
-        .toolbar,
-        form {
-            display: grid;
-            gap: 12px;
-        }
-
-        label {
-            display: grid;
-            gap: 6px;
-            font-size: 13px;
-            color: var(--muted);
-        }
-
-        input,
-        select,
-        button,
-        textarea {
-            width: 100%;
-            padding: 12px 14px;
-            border-radius: 14px;
-            border: 1px solid rgba(30, 36, 48, 0.14);
-            font: inherit;
-            color: var(--ink);
-            background: rgba(255, 255, 255, 0.92);
-        }
-
-        button {
-            cursor: pointer;
-            border: 0;
-            background: linear-gradient(135deg, #0a5bd8, #0f78c8);
-            color: white;
-            font-weight: 700;
-            letter-spacing: 0.01em;
-        }
-
-        button.secondary {
-            background: linear-gradient(135deg, #f3ca6a, #d88932);
-            color: #1c1710;
-        }
-
-        button.ghost {
-            background: rgba(255, 255, 255, 0.55);
-            color: var(--ink);
-            border: 1px solid var(--line);
-        }
-
-        .button-grid {
-            display: grid;
-            gap: 10px;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-        }
-
-        .strategy-card {
-            padding: 14px;
-            border-radius: 18px;
-            background: rgba(255, 252, 245, 0.92);
-            border: 1px solid var(--line);
-            display: grid;
-            gap: 10px;
-        }
-
-        .strategy-card h3 {
-            margin: 0;
-            font-size: 15px;
-        }
-
-        .strategy-card p {
-            margin: 0;
-            color: var(--muted);
-            font-size: 13px;
-            line-height: 1.5;
-        }
-
-        .tiny {
-            color: var(--muted);
-            font-size: 12px;
-        }
-
-        .status-banner {
-            padding: 10px 12px;
-            border-radius: 14px;
-            background: var(--accent-soft);
-            color: var(--accent);
-            font-size: 13px;
-            border: 1px solid rgba(0, 87, 184, 0.18);
-        }
-
-        .status-banner.error {
-            background: rgba(180, 35, 24, 0.1);
+        #status-msg.error {
+            background: rgba(239,68,68,0.15);
             color: var(--danger);
-            border-color: rgba(180, 35, 24, 0.18);
         }
-
-        @media (max-width: 980px) {
-            .grid,
-            .two-col,
-            .status-strip {
-                grid-template-columns: 1fr;
-            }
-
-            .log {
-                height: 420px;
-            }
+        .layout {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            min-height: 0;
         }
+        .left {
+            width: 178px;
+            flex-shrink: 0;
+            background: var(--left);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        ::-webkit-scrollbar { width: 3px; height: 3px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #2e3340; border-radius: 2px; }
+        .sec {
+            border-bottom: 1px solid var(--border);
+            padding: 6px 8px;
+        }
+        .sec-label {
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.09em;
+            color: var(--muted);
+            margin-bottom: 5px;
+        }
+        #mode-badge {
+            display: inline-block;
+            padding: 1px 7px;
+            border-radius: 8px;
+            font-size: 10px;
+            font-weight: 600;
+            background: var(--accent-dim);
+            color: var(--accent);
+            margin-bottom: 5px;
+        }
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 4px 7px;
+            border-radius: 5px;
+            border: 1px solid var(--border);
+            font: inherit;
+            font-size: 10px;
+            cursor: pointer;
+            color: var(--ink);
+            background: #272c37;
+            text-align: left;
+            margin-bottom: 3px;
+            line-height: 1.3;
+        }
+        .btn:last-child { margin-bottom: 0; }
+        .btn.primary {
+            background: var(--accent);
+            color: #fff;
+            border-color: transparent;
+            font-weight: 600;
+        }
+        .btn.warn {
+            background: rgba(245,158,11,0.18);
+            color: var(--warn);
+            border-color: rgba(245,158,11,0.28);
+        }
+        .btn.ghost {
+            background: transparent;
+            color: var(--muted);
+        }
+        .btn:hover { filter: brightness(1.18); }
+        .btn:active { filter: brightness(0.88); }
+        .inp {
+            width: 100%;
+            padding: 3px 5px;
+            background: #12141a;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--ink);
+            font: inherit;
+            font-size: 10px;
+            margin-bottom: 3px;
+        }
+        .inp:last-child { margin-bottom: 0; }
+        .inp:focus { outline: 1px solid var(--accent); }
+        select.inp { appearance: none; }
+        .row { display: flex; gap: 3px; }
+        .row .inp { flex: 1; min-width: 0; margin-bottom: 0; }
+        #strategy-grid { display: flex; flex-direction: column; gap: 2px; }
+        .strat-row { display: flex; align-items: center; gap: 3px; }
+        .strat-btn {
+            flex: 1;
+            padding: 3px 7px;
+            border-radius: 4px;
+            background: rgba(59,130,246,0.09);
+            border: 1px solid rgba(59,130,246,0.22);
+            color: var(--accent);
+            font: inherit;
+            font-size: 10px;
+            cursor: pointer;
+            text-align: left;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .strat-btn:hover { background: rgba(59,130,246,0.2); }
+        .strat-edit-link { font-size: 11px; color: #546e7a; text-decoration: none; flex-shrink: 0; opacity: 0.7; }
+        .strat-edit-link:hover { opacity: 1; color: #90caf9; }
+        .right {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-width: 0;
+        }
+        .log-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 3px 8px;
+            background: var(--left);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+        .log-header span { font-size: 9px; color: var(--muted); }
+        .btn-xs {
+            padding: 1px 6px;
+            font-size: 9px;
+            border-radius: 3px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--muted);
+            cursor: pointer;
+        }
+        .btn-xs:hover { color: var(--ink); }
+        #log {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 3px 5px;
+            font-family: Consolas, "Courier New", monospace;
+            font-size: 10px;
+            line-height: 1.55;
+        }
+        .ll {
+            display: flex;
+            gap: 5px;
+            padding: 1px 3px;
+            border-radius: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+        .ll:hover { background: rgba(255,255,255,0.04); }
+        .ll-time { color: #3d4455; flex-shrink: 0; width: 52px; }
+        .ll-frame { color: #3d4455; flex-shrink: 0; width: 44px; text-align: right; }
+        .ll-event { color: var(--accent); font-weight: 600; flex-shrink: 0; min-width: 110px; max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
+        .ll-src { color: #404858; flex-shrink: 0; }
+        .ll-payload { color: #636d82; overflow: hidden; text-overflow: ellipsis; flex: 1; }
+        .ll-desc { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .ll-cat-game   .ll-desc { color: #7dd3fc; }
+        .ll-cat-unit   .ll-desc { color: #86efac; }
+        .ll-cat-chat   .ll-desc { color: #fde68a; }
+        .ll-cat-action .ll-desc { color: #c4b5fd; }
+        .ll-cat-bridge .ll-desc { color: var(--muted); }
+        .ll-cat-frame  .ll-desc { color: #3d4556; }
+        .ll-cat-frame  .ll-time, .ll-cat-frame .ll-frame { color: #2c3040; }
+
+        /* ── Tabs ─────────────────────────────────── */
+        .tab-bar {
+            display: flex;
+            background: var(--left);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+        .tab {
+            padding: 4px 12px;
+            font: inherit;
+            font-size: 10px;
+            color: var(--muted);
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .tab:hover { color: var(--ink); }
+        .tab.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+        .tab-pane {
+            display: none;
+            flex: 1;
+            flex-direction: column;
+            overflow: hidden;
+            min-height: 0;
+        }
+        .tab-pane.active { display: flex; }
+
+        /* ── Script editor ────────────────────────── */
+        .editor-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 3px 8px;
+            background: var(--left);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+            gap: 6px;
+        }
+        .editor-header .editor-title {
+            font-size: 10px;
+            color: var(--accent);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex: 1;
+        }
+        .editor-header .editor-actions { display: flex; gap: 4px; flex-shrink: 0; }
+        #editor-code {
+            flex: 1;
+            width: 100%;
+            background: #12141a;
+            color: #c8cdd8;
+            border: none;
+            border-radius: 0;
+            font-family: Consolas, "Courier New", monospace;
+            font-size: 11px;
+            line-height: 1.6;
+            padding: 8px 10px;
+            resize: none;
+            outline: none;
+            tab-size: 4;
+        }
+        #editor-status {
+            flex-shrink: 0;
+            font-size: 9px;
+            padding: 2px 8px;
+            color: var(--muted);
+            background: var(--left);
+            border-top: 1px solid var(--border);
+            min-height: 18px;
+        }
+        #editor-status.ok { color: var(--ok); }
+        #editor-status.err { color: var(--danger); }
     </style>
 </head>
 <body>
 <script>
 window.initialBridgeData = {{ initial_data|safe }};
 </script>
-<div class="shell">
-    <section class="hero">
-        <h1>ai_dc Web Bridge</h1>
-        <p>ZMQ 테스트 에이전트와 클라이언트를 Django 하나로 합친 제어 패널입니다. 이벤트를 실시간으로 보고, 채팅과 유닛 명령을 보내고, 대표 전략 버튼으로 opening 전환을 요청할 수 있습니다.</p>
-    </section>
 
-    <section class="panel">
-        <div class="panel-head">
-            <h2>실시간 상태</h2>
-            <div class="tiny" id="connection-text">대기 중</div>
-        </div>
-        <div class="panel-body">
-            <div class="status-strip">
-                <div class="stat-card"><span>Race</span><strong id="self-race">-</strong></div>
-                <div class="stat-card"><span>Opening</span><strong id="opening">-</strong></div>
-                <div class="stat-card"><span>Mode</span><strong id="mode">-</strong></div>
-            </div>
-            <div class="two-col" style="margin-top: 16px;">
-                <div class="stat-card"><span>Resources</span><strong id="resources">-</strong></div>
-                <div class="stat-card"><span>Frame</span><strong id="frame">-</strong></div>
-            </div>
-            <div class="status-banner" id="status-banner" style="margin-top: 16px;">브리지가 UDP 37000/37001 대기 상태로 올라오면 게임 이벤트를 바로 표시합니다.</div>
-        </div>
-    </section>
+<div id="topbar">
+    <span class="title">ai_dc</span>
+    <div class="dot" id="conn-dot"></div>
+    <span class="sb-item">Race <span id="sb-race">-</span></span>
+    <span class="sb-item">Opening <span id="sb-opening">-</span></span>
+    <span class="sb-item">Mode <span id="sb-mode">-</span></span>
+    <span class="sb-item">M<span id="sb-minerals">-</span></span>
+    <span class="sb-item">G<span id="sb-gas">-</span></span>
+    <span class="sb-item">S<span id="sb-supply">-</span></span>
+    <span class="sb-item">f<span id="sb-frame">-</span></span>
+    <span id="status-msg">대기 중</span>
+    <div id="sysinfo">
+        <span class="si">CPU <span id="si-cpu">-</span>%</span>
+        <span class="si">MEM <span id="si-mem">-</span>%</span>
+        <span class="si">DISK <span id="si-disk">-</span>%</span>
+    </div>
+    <span id="sb-last"></span>
+</div>
 
-    <section class="grid">
-        <div class="panel">
-            <div class="panel-head">
-                <h2>이벤트 로그</h2>
-                <button class="ghost" type="button" id="clear-log">화면 비우기</button>
-            </div>
-            <div class="panel-body">
-                <div class="log" id="log"></div>
-            </div>
+<div class="layout">
+
+    <div class="left">
+
+        <div class="sec">
+            <div class="sec-label">게임 제어</div>
+            <div id="mode-badge">모드 미확인</div>
+            <button class="btn warn" type="button" id="btn-gather">💰 돈 모으기</button>
+            <button class="btn primary" type="button" id="btn-auto">▶ 자율 플레이</button>
+            <button class="btn ghost" type="button" id="btn-manual">⏸ 수동</button>
+            <button class="btn ghost" type="button" id="btn-scout">🔍 탐색</button>
+            <button class="btn ghost" type="button" id="btn-block">🧱 입구 막기</button>
         </div>
 
-        <div class="toolbar">
-            <section class="panel">
-                <div class="panel-head"><h2>게임 제어</h2></div>
-                <div class="panel-body">
-                    <div id="control-mode-badge" style="display:inline-block;padding:4px 12px;border-radius:20px;font-size:.82em;font-weight:600;background:var(--accent-soft);color:var(--accent);margin-bottom:12px;">모드 미확인</div>
-                    <div style="display:flex;gap:10px;flex-wrap:wrap;">
-                        <button type="button" id="btn-gather" class="secondary">💰 돈 모으기</button>
-                        <button type="button" id="btn-auto">▶ 알아서하기</button>
-                        <button type="button" id="btn-manual" class="ghost">⏸ 수동 제어</button>
-                    </div>
-                    <div class="tiny" style="margin-top:8px;color:var(--muted);">돈 모으기: 일꾼이 미네랄 채취 시작 (수동 모드 유지) | 알아서하기: AI 자율 진행</div>
-                </div>
-            </section>
-
-            <section class="panel">
-                <div class="panel-head"><h2>메시지 전송</h2></div>
-                <div class="panel-body">
-                    <form id="text-form">
-                        <label>게임 채팅
-                            <input id="text-input" name="text" placeholder="hello" maxlength="200">
-                        </label>
-                        <button type="submit">즉시 전송</button>
-                    </form>
-                </div>
-            </section>
-
-            <section class="panel">
-                <div class="panel-head"><h2>유닛 명령</h2></div>
-                <div class="panel-body">
-                    <form id="unit-form">
-                        <label>명령 타입
-                            <select id="unit-action-type" name="type">
-                                <option value="unit_move">Move</option>
-                                <option value="unit_stop">Stop</option>
-                                <option value="unit_attack_move">Attack Move</option>
-                                <option value="unit_attack_unit">Attack Unit</option>
-                            </select>
-                        </label>
-                        <label>유닛 ID
-                            <input id="unit-id" name="unit_id" type="number" min="0" placeholder="11">
-                        </label>
-                        <label id="xy-fields">좌표 X / Y
-                            <div class="two-col">
-                                <input id="coord-x" name="x" type="number" placeholder="3200">
-                                <input id="coord-y" name="y" type="number" placeholder="2400">
-                            </div>
-                        </label>
-                        <label id="target-unit-field" style="display:none;">타겟 유닛 ID
-                            <input id="target-unit-id" name="target_unit_id" type="number" min="0" placeholder="25">
-                        </label>
-                        <button class="secondary" type="submit">명령 보내기</button>
-                    </form>
-                </div>
-            </section>
-
-            <section class="panel">
-                <div class="panel-head"><h2>대표 전략</h2></div>
-                <div class="panel-body">
-                    <div class="tiny" id="strategy-caption">현재 종족에 맞는 대표 opening 을 표시합니다.</div>
-                    <div class="button-grid" id="strategy-grid" style="margin-top: 14px;"></div>
-                </div>
-            </section>
+        <div class="sec">
+            <div class="sec-label">채팅 전송</div>
+            <form id="text-form">
+                <input class="inp" id="text-input" placeholder="hello" maxlength="200">
+                <button class="btn primary" type="submit">전송</button>
+            </form>
         </div>
-    </section>
+
+        <div class="sec">
+            <div class="sec-label">유닛 명령</div>
+            <form id="unit-form">
+                <select class="inp" id="unit-action-type" name="type">
+                    <option value="unit_move">Move</option>
+                    <option value="unit_stop">Stop</option>
+                    <option value="unit_attack_move">Attack Move</option>
+                    <option value="unit_attack_unit">Attack Unit</option>
+                </select>
+                <input class="inp" id="unit-id" type="number" min="0" placeholder="Unit ID">
+                <div class="row" id="xy-fields" style="margin-bottom:3px;">
+                    <input class="inp" id="coord-x" type="number" placeholder="X">
+                    <input class="inp" id="coord-y" type="number" placeholder="Y">
+                </div>
+                <input class="inp" id="target-unit-id" type="number" placeholder="Target ID" style="display:none;">
+                <button class="btn warn" type="submit">명령 전송</button>
+            </form>
+        </div>
+
+        <div class="sec">
+            <div class="sec-label">전략 <span id="strategy-race" style="color:var(--accent)"></span></div>
+            <div id="strategy-grid"><div style="color:var(--muted);font-size:10px;">게임 연결 대기중</div></div>
+        </div>
+
+    </div>
+
+    <div class="right">
+        <div class="tab-bar">
+            <button class="tab active" data-tab="log">이벤트 로그</button>
+            <button class="tab" data-tab="editor" id="tab-editor">✏ 스크립트 에디터</button>
+        </div>
+
+        <div class="tab-pane active" id="pane-log">
+            <div class="log-header">
+                <span>이벤트 로그</span>
+                <button class="btn-xs" id="clear-log">지우기</button>
+            </div>
+            <div id="log"></div>
+        </div>
+
+        <div class="tab-pane" id="pane-editor">
+            <div class="editor-header">
+                <span class="editor-title" id="editor-title">← 왼쪽에서 전략을 선택하세요</span>
+                <div class="editor-actions">
+                    <button class="btn-xs" id="editor-save" disabled>저장</button>
+                    <button class="btn-xs" id="editor-run" disabled>▶ 실행</button>
+                </div>
+            </div>
+            <textarea id="editor-code" placeholder="전략을 선택하면 스크립트가 여기 표시됩니다."></textarea>
+            <div id="editor-status"></div>
+        </div>
+    </div>
+
 </div>
 
 <script>
@@ -392,197 +450,269 @@ function escapeHtml(value) {
         .replaceAll("'", '&#39;');
 }
 
-function formatPayload(payload) {
-    return JSON.stringify(payload || {}, null, 2);
+function formatPayloadShort(payload) {
+    if (!payload || typeof payload !== 'object') return '';
+    const entries = Object.entries(payload);
+    if (!entries.length) return '';
+    return entries.slice(0, 5).map(([k, v]) => {
+        const vs = typeof v === 'object' ? JSON.stringify(v) : String(v);
+        return k + ':' + (vs.length > 20 ? vs.slice(0, 20) + '\u2026' : vs);
+    }).join('  ');
 }
 
-function updateHeader(currentState) {
-    document.getElementById('self-race').textContent = currentState.self_race || '-';
-    document.getElementById('opening').textContent = currentState.opening || '-';
-    document.getElementById('mode').textContent = currentState.mode || '-';
-    document.getElementById('frame').textContent = currentState.frame ?? '-';
+function updateHeader(s) {
+    document.getElementById('sb-race').textContent = s.self_race || '-';
+    document.getElementById('sb-opening').textContent = s.opening || '-';
+    document.getElementById('sb-mode').textContent = s.mode || '-';
+    document.getElementById('sb-frame').textContent = s.frame ?? '-';
+    document.getElementById('sb-minerals').textContent = s.minerals ?? '-';
+    document.getElementById('sb-gas').textContent = s.gas ?? '-';
+    const supply = s.supply_used != null ? s.supply_used + '/' + s.supply_total : '-';
+    document.getElementById('sb-supply').textContent = supply;
 
-    const supply = currentState.supply_used && currentState.supply_total
-        ? `${currentState.supply_used}/${currentState.supply_total}`
-        : '-';
-    const minerals = currentState.minerals ?? '-';
-    const gas = currentState.gas ?? '-';
-    document.getElementById('resources').textContent = `M ${minerals} / G ${gas} / S ${supply}`;
-    document.getElementById('connection-text').textContent = currentState.connected
-        ? `연결됨 · 마지막 이벤트 ${currentState.last_event_at || '-'}`
-        : '대기 중';
+    document.getElementById('conn-dot').classList.toggle('on', Boolean(s.connected));
 
-    const banner = document.getElementById('status-banner');
-    banner.classList.toggle('error', Boolean(currentState.last_error));
-    banner.textContent = currentState.last_error
-        ? `브리지 오류: ${currentState.last_error}`
-        : `${currentState.status || 'idle'} · action -> 127.0.0.1:37001`;
+    const msg = document.getElementById('status-msg');
+    if (s.last_error) {
+        msg.className = 'error';
+        msg.textContent = 'ERR: ' + s.last_error;
+    } else {
+        msg.className = '';
+        msg.textContent = s.status || 'idle';
+    }
+    document.getElementById('sb-last').textContent = s.last_event_at ? 'last: ' + s.last_event_at : '';
 }
 
-function renderStrategies(currentState) {
-    const race = currentState.self_race;
-    const strategies = currentState.current_strategies || (currentState.available_strategies || {})[race] || [];
+function renderStrategies(s) {
+    const race = s.self_race;
+    const strategies = s.current_strategies || (s.available_strategies || {})[race] || [];
+    document.getElementById('strategy-race').textContent = race || '';
     const grid = document.getElementById('strategy-grid');
-    const caption = document.getElementById('strategy-caption');
-    caption.textContent = race
-        ? `${race} 대표 opening 버튼입니다. 클릭하면 즉시 set_opening 액션을 전송합니다.`
-        : '게임이 연결되면 현재 종족 기준 대표 opening 을 표시합니다.';
     if (!strategies.length) {
-        grid.innerHTML = '<div class="tiny">전략 목록을 불러오는 중입니다.</div>';
+        grid.innerHTML = '<div style="color:var(--muted);font-size:10px;">전략 없음</div>';
         return;
     }
-
-    grid.innerHTML = strategies.map((item) => `
-        <article class="strategy-card">
-            <div>
-                <h3>${escapeHtml(item.label)}</h3>
-                <p>${escapeHtml(item.summary)}</p>
-            </div>
-            <button type="button" data-opening="${escapeHtml(item.opening)}">${escapeHtml(item.opening)}</button>
-        </article>
-    `).join('');
-
-    grid.querySelectorAll('button[data-opening]').forEach((button) => {
-        button.addEventListener('click', async () => {
-            const opening = button.getAttribute('data-opening');
-            await postJson('/api/action/strategy/', { opening });
+    // Map opening -> script_id (same logic as Python: replace / with - and . with _)
+    function toScriptId(opening) {
+        return opening.replace(/\//g, '-').replace(/\./g, '_');
+    }
+    grid.innerHTML = strategies.map(item => {
+        const sid = toScriptId(item.opening);
+        return '<div class="strat-row">' +
+            '<button class="strat-btn" type="button" data-opening="' + escapeHtml(item.opening) +
+            '" data-sid="' + escapeHtml(sid) +
+            '" title="' + escapeHtml(item.summary) + '">' + escapeHtml(item.label || item.opening) + '</button>' +
+            '<button class="strat-edit-link" type="button" data-sid="' + escapeHtml(sid) + '" title="스크립트 편집">✏</button>' +
+            '</div>';
+    }).join('');
+    grid.querySelectorAll('.strat-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const sid = btn.getAttribute('data-sid');
+            const label = btn.textContent.trim();
+            // Load script into editor
+            loadScriptIntoEditor(sid, label);
+            // Run strategy
+            try {
+                await postJson('/api/scripts/' + encodeURIComponent(sid) + '/run/', {});
+            } catch (_) {
+                try {
+                    await postJson('/api/action/strategy/', { opening: btn.getAttribute('data-opening') });
+                } catch (err) {
+                    console.warn('strategy action failed:', err);
+                }
+            }
+        });
+    grid.querySelectorAll('.strat-edit-link').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const sid = btn.getAttribute('data-sid');
+            const label = btn.closest('.strat-row')?.querySelector('.strat-btn')?.textContent.trim() || sid;
+            loadScriptIntoEditor(sid, label);
         });
     });
 }
 
-function appendLog(event, prepend = true) {
+function eventCategory(e) {
+    if (['onStart','onStart_initialized','onEnd','onNukeDetect','onSaveGame','onPlayerLeft'].includes(e)) return 'game';
+    if (e.startsWith('onUnit') || e.startsWith('onPlayer')) return 'unit';
+    if (['onSendText','onReceiveText'].includes(e)) return 'chat';
+    if (['ui_action_sent'].includes(e)) return 'action';
+    if (e.startsWith('bridge') || ['manual_mode_changed','onStrategyChanged'].includes(e)) return 'bridge';
+    if (e === 'onFrame') return 'frame';
+    return 'bridge';
+}
+
+function describeEvent(event) {
+    const p = event.payload || {};
+    const e = event.event || '';
+    switch (e) {
+        case 'onStart':
+            return '🎮 게임 시작 — 종족: ' + (p.self_race||'?') + (p.map_name ? ' / 맵: '+p.map_name : '');
+        case 'onStart_initialized':
+            return '✅ 전략 준비 완료 — 오프닝: ' + (p.opening||'?');
+        case 'onEnd':
+            return p.is_winner ? '🏆 게임 승리!' : '💀 게임 패배';
+        case 'onFrame':
+            return 'M:' + (p.minerals??'-') + ' G:' + (p.gas??'-') + ' 인구:' + (p.supply_used??'-') + '/' + (p.supply_total??'-') + (p.mode?' ['+p.mode+']':'');
+        case 'onUnitCreate':
+            return '🔨 유닛 생성 — ' + (p.unit_type||'?') + (p.unit_id!=null?' #'+p.unit_id:'') + (p.player?' ('+p.player+')':'');
+        case 'onUnitDestroy':
+            return '💥 유닛 소멸 — ' + (p.unit_type||'?') + (p.unit_id!=null?' #'+p.unit_id:'');
+        case 'onUnitMorph':
+            return '🔄 유닛 변형 — ' + (p.unit_type||'?') + (p.unit_id!=null?' #'+p.unit_id:'');
+        case 'onUnitComplete':
+            return '✔ 유닛 완성 — ' + (p.unit_type||'?') + (p.unit_id!=null?' #'+p.unit_id:'');
+        case 'onUnitDiscover':
+            return '👁 유닛 발견 — ' + (p.unit_type||'?') + (p.player?' ['+p.player+']':'');
+        case 'onUnitEvade':
+            return '🫥 유닛 은폐 — ' + (p.unit_type||'?');
+        case 'onUnitShow':
+            return '👀 유닛 시야 확보 — ' + (p.unit_type||'?');
+        case 'onUnitHide':
+            return '🙈 유닛 시야 소실 — ' + (p.unit_type||'?');
+        case 'onUnitRenegade':
+            return '🔀 유닛 소속 변경 — ' + (p.unit_type||'?');
+        case 'onSendText':
+            return '💬 채팅 전송 — "' + (p.text||'') + '"';
+        case 'onReceiveText':
+            return '📨 메시지 수신 — ' + (p.player||'?') + ': "' + (p.text||'') + '"';
+        case 'onPlayerLeft':
+            return '🚪 플레이어 퇴장 — ' + (p.player||'?');
+        case 'onNukeDetect':
+            return '☢ 핵 감지! 위치: (' + (p.x??'?') + ', ' + (p.y??'?') + ')';
+        case 'onSaveGame':
+            return '💾 게임 저장 — ' + (p.filename||'');
+        case 'bridge_status':
+            return '🔗 연결 상태 — ' + (p.message||'');
+        case 'bridge_error':
+            return '❌ 오류 — ' + (p.message||'');
+        case 'bridge_parse_error':
+            return '⚠ 파싱 오류 — ' + (p.message||p.raw||'');
+        case 'manual_mode_changed': {
+            const manual = p.manual_mode==='true'||p.manual_mode===true;
+            return manual ? '⏸ 수동 모드로 전환됨' : '▶ 자율 플레이로 전환됨';
+        }
+        case 'onStrategyChanged':
+            return '🎯 전략 변경 — ' + (p.opening||'?') + (p.mode?' / 모드: '+p.mode:'');
+        case 'ui_action_sent': {
+            const a = p.action||{};
+            const m = {
+                set_opening: '전략 설정: '+(a.opening||'?'),
+                send_text: '채팅 전송: "'+(a.text||'')+'"',
+                gather_minerals: '미네랄 채집 명령',
+                unit_move: '유닛 이동 #'+(a.unit_id||'?'),
+                unit_stop: '유닛 정지 #'+(a.unit_id||'?'),
+                unit_attack_move: '공격 이동 #'+(a.unit_id||'?'),
+                unit_attack_unit: '유닛 공격 #'+(a.unit_id||'?'),
+                set_manual: (a.manual?'수동 모드 활성화':'자율 모드 활성화'),
+            };
+            return '🖱 UI 명령 — ' + (m[a.type]||a.type||'?');
+        }
+        default:
+            return e + (Object.keys(p).length ? ' — ' + formatPayloadShort(p) : '');
+    }
+}
+
+function appendLog(event, prepend) {
     const log = document.getElementById('log');
-    const item = document.createElement('article');
-    item.className = 'log-item';
-    item.innerHTML = `
-        <div class="log-meta">
-            <span class="log-title">${escapeHtml(event.event)}</span>
-            <span>${escapeHtml(event.source || 'game')} · frame ${escapeHtml(event.frame ?? -1)} · ${escapeHtml(event.time || '')}</span>
-        </div>
-        <pre class="payload">${escapeHtml(formatPayload(event.payload))}</pre>
-    `;
-    if (prepend) {
-        log.prepend(item);
+    const cat = eventCategory(event.event || '');
+    const line = document.createElement('div');
+    line.className = 'll ll-cat-' + cat;
+    const time = escapeHtml(event.time || '');
+    const frame = event.frame != null ? 'f' + escapeHtml(String(event.frame)) : '';
+    const desc = escapeHtml(describeEvent(event));
+    line.innerHTML =
+        '<span class="ll-time">' + time + '</span>' +
+        '<span class="ll-frame">' + frame + '</span>' +
+        '<span class="ll-desc">' + desc + '</span>';
+    if (prepend) { log.prepend(line); } else { log.append(line); }
+}
+
+function updateControlBadge(manual) {
+    const badge = document.getElementById('mode-badge');
+    if (!badge) return;
+    if (manual) {
+        badge.textContent = '\u23f8 수동 모드';
+        badge.style.background = 'rgba(245,158,11,0.15)';
+        badge.style.color = 'var(--warn)';
     } else {
-        log.append(item);
+        badge.textContent = '\u25b6 자율 플레이';
+        badge.style.background = 'rgba(34,197,94,0.12)';
+        badge.style.color = 'var(--ok)';
     }
 }
 
 function renderSnapshot(snapshot) {
     state.snapshot = snapshot;
-    updateHeader(snapshot.state || {});
-    renderStrategies(snapshot.state || {});
-    const mm = (snapshot.state || {}).manual_mode;
-    if (mm !== null && mm !== undefined) updateControlBadge(mm);
+    const s = snapshot.state || {};
+    updateHeader(s);
+    renderStrategies(s);
+    if (s.manual_mode != null) updateControlBadge(s.manual_mode);
     const log = document.getElementById('log');
     log.innerHTML = '';
-    (snapshot.events || []).slice().reverse().forEach((event) => appendLog(event, false));
+    (snapshot.events || []).slice().reverse().forEach(ev => appendLog(ev, false));
     log.scrollTop = 0;
 }
 
 function applyIncomingEvent(event) {
     appendLog(event, true);
-    const currentState = state.snapshot.state || {};
-    currentState.connected = true;
-    currentState.last_event_at = event.time;
-    currentState.frame = event.frame;
+    const s = state.snapshot.state || {};
+    s.connected = true;
+    s.last_event_at = event.time;
+    s.frame = event.frame;
 
-    if (event.event === 'onStart') {
-        currentState.self_race = event.payload.self_race;
-        currentState.enemy_count = event.payload.enemy_count;
-        currentState.is_replay = event.payload.is_replay;
-        currentState.status = 'game connected';
-    }
-    if (event.event === 'onStart_initialized') {
-        currentState.is_1v1 = event.payload.is_1v1;
-        currentState.is_ffa = event.payload.is_ffa;
-        currentState.opening = event.payload.opening;
-    }
+    if (event.event === 'onStart') { s.self_race = event.payload.self_race; s.status = 'game connected'; }
+    if (event.event === 'onStart_initialized') { s.opening = event.payload.opening; }
     if (event.event === 'onFrame') {
-        currentState.minerals = event.payload.minerals;
-        currentState.gas = event.payload.gas;
-        currentState.supply_used = event.payload.supply_used;
-        currentState.supply_total = event.payload.supply_total;
-        currentState.mode = event.payload.mode;
+        s.minerals = event.payload.minerals; s.gas = event.payload.gas;
+        s.supply_used = event.payload.supply_used; s.supply_total = event.payload.supply_total;
+        s.mode = event.payload.mode;
     }
-    if (event.event === 'onStrategyChanged') {
-        currentState.opening = event.payload.opening;
-        currentState.mode = event.payload.mode;
-    }
-    if (event.event === 'bridge_error' || event.event === 'bridge_parse_error') {
-        currentState.last_error = event.payload.message;
-    }
-    if (event.event === 'bridge_status') {
-        currentState.status = event.payload.message;
-    }
+    if (event.event === 'onStrategyChanged') { s.opening = event.payload.opening; s.mode = event.payload.mode; }
+    if (event.event === 'bridge_error' || event.event === 'bridge_parse_error') { s.last_error = event.payload.message; }
+    if (event.event === 'bridge_status') { s.status = event.payload.message; }
     if (event.event === 'manual_mode_changed') {
-        currentState.manual_mode = event.payload.manual_mode === 'true' || event.payload.manual_mode === true;
-        updateControlBadge(currentState.manual_mode);
+        s.manual_mode = event.payload.manual_mode === 'true' || event.payload.manual_mode === true;
+        updateControlBadge(s.manual_mode);
     }
-    if (event.event === 'ui_action_sent' && event.payload.action.type === 'set_opening') {
-        currentState.opening = event.payload.action.opening;
-    }
-    if (currentState.self_race && currentState.available_strategies) {
-        currentState.current_strategies = currentState.available_strategies[currentState.self_race] || [];
-    }
+    if (event.event === 'ui_action_sent' && event.payload.action.type === 'set_opening') { s.opening = event.payload.action.opening; }
+    if (s.self_race && s.available_strategies) { s.current_strategies = s.available_strategies[s.self_race] || []; }
 
-    state.snapshot.state = currentState;
-    updateHeader(currentState);
-    renderStrategies(currentState);
-}
-
-function updateControlBadge(manual) {
-    const badge = document.getElementById('control-mode-badge');
-    if (!badge) return;
-    if (manual) {
-        badge.textContent = '⏸ 수동 모드';
-        badge.style.background = '#fef3c7';
-        badge.style.color = '#92400e';
-    } else {
-        badge.textContent = '▶ 자율 플레이';
-        badge.style.background = '#d1fae5';
-        badge.style.color = '#065f46';
-    }
+    state.snapshot.state = s;
+    updateHeader(s);
+    renderStrategies(s);
 }
 
 async function postJson(url, payload) {
-    const response = await fetch(url, {
+    const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
     });
-    const data = await response.json();
-    if (!response.ok || !data.ok) {
-        throw new Error(data.error || 'request failed');
-    }
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || 'request failed');
     return data;
 }
 
 function connectEvents() {
     const source = new EventSource('/events/stream/');
     state.eventSource = source;
-    source.onmessage = (message) => {
-        const data = JSON.parse(message.data);
-        if (data.kind === 'snapshot') {
-            renderSnapshot({ state: data.state, events: data.events });
-            return;
-        }
-        if (data.kind === 'event') {
-            applyIncomingEvent(data.event);
-        }
+    source.onmessage = (msg) => {
+        const data = JSON.parse(msg.data);
+        if (data.kind === 'snapshot') { renderSnapshot({ state: data.state, events: data.events }); return; }
+        if (data.kind === 'event') { applyIncomingEvent(data.event); }
     };
     source.onerror = () => {
-        const banner = document.getElementById('status-banner');
-        banner.classList.add('error');
-        banner.textContent = 'SSE 연결이 잠시 끊겼습니다. 브라우저가 자동으로 재연결을 시도합니다.';
+        const m = document.getElementById('status-msg');
+        m.className = 'error';
+        m.textContent = 'SSE 재연결 중\u2026';
     };
 }
 
 function setupForms() {
     const textForm = document.getElementById('text-form');
     const textInput = document.getElementById('text-input');
-    textForm.addEventListener('submit', async (event) => {
-        event.preventDefault();
+    textForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
         const text = textInput.value.trim();
         if (!text) return;
         await postJson('/api/action/text/', { text });
@@ -591,46 +721,151 @@ function setupForms() {
 
     const actionType = document.getElementById('unit-action-type');
     const xyFields = document.getElementById('xy-fields');
-    const targetField = document.getElementById('target-unit-field');
+    const targetField = document.getElementById('target-unit-id');
     const refreshUnitFields = () => {
-        const type = actionType.value;
-        xyFields.style.display = (type === 'unit_move' || type === 'unit_attack_move') ? 'grid' : 'none';
-        targetField.style.display = type === 'unit_attack_unit' ? 'grid' : 'none';
+        const t = actionType.value;
+        xyFields.style.display = (t === 'unit_move' || t === 'unit_attack_move') ? 'flex' : 'none';
+        targetField.style.display = t === 'unit_attack_unit' ? 'block' : 'none';
     };
     actionType.addEventListener('change', refreshUnitFields);
     refreshUnitFields();
 
     const unitForm = document.getElementById('unit-form');
-    unitForm.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        const payload = {
+    unitForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await postJson('/api/action/unit/', {
             type: document.getElementById('unit-action-type').value,
             unit_id: document.getElementById('unit-id').value,
             x: document.getElementById('coord-x').value,
             y: document.getElementById('coord-y').value,
             target_unit_id: document.getElementById('target-unit-id').value,
-        };
-        await postJson('/api/action/unit/', payload);
+        });
     });
 
-    document.getElementById('clear-log').addEventListener('click', () => {
-        document.getElementById('log').innerHTML = '';
+    // Tab switching
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            const target = tab.getAttribute('data-tab');
+            document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t === tab));
+            document.querySelectorAll('.tab-pane').forEach(p => {
+                p.classList.toggle('active', p.id === 'pane-' + target);
+            });
+        });
     });
 
-    document.getElementById('btn-gather').addEventListener('click', async () => {
-        await postJson('/api/action/control/', { type: 'gather_minerals' });
+    // Tab key in editor inserts 4 spaces
+    document.getElementById('editor-code').addEventListener('keydown', (e) => {
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            const ta = e.target;
+            const s = ta.selectionStart, end = ta.selectionEnd;
+            ta.value = ta.value.slice(0, s) + '    ' + ta.value.slice(end);
+            ta.selectionStart = ta.selectionEnd = s + 4;
+        }
     });
-    document.getElementById('btn-auto').addEventListener('click', async () => {
-        await postJson('/api/action/control/', { type: 'set_auto_play' });
+
+    // Save button
+    document.getElementById('editor-save').addEventListener('click', async () => {
+        const sid = document.getElementById('editor-save').getAttribute('data-sid');
+        if (!sid) return;
+        const content = document.getElementById('editor-code').value;
+        const status = document.getElementById('editor-status');
+        try {
+            await postJson('/api/scripts/' + encodeURIComponent(sid) + '/', { content });
+            status.textContent = '저장 완료';
+            status.className = 'ok';
+        } catch (err) {
+            status.textContent = '저장 실패: ' + err.message;
+            status.className = 'err';
+        }
+        setTimeout(() => { status.textContent = ''; status.className = ''; }, 2500);
     });
-    document.getElementById('btn-manual').addEventListener('click', async () => {
-        await postJson('/api/action/control/', { type: 'set_manual' });
+
+    // Run button (save + run)
+    document.getElementById('editor-run').addEventListener('click', async () => {
+        const sid = document.getElementById('editor-run').getAttribute('data-sid');
+        if (!sid) return;
+        const content = document.getElementById('editor-code').value;
+        const status = document.getElementById('editor-status');
+        try {
+            await postJson('/api/scripts/' + encodeURIComponent(sid) + '/', { content });
+            await postJson('/api/scripts/' + encodeURIComponent(sid) + '/run/', {});
+            status.textContent = '저장 후 실행 완료';
+            status.className = 'ok';
+        } catch (err) {
+            status.textContent = '실행 실패: ' + err.message;
+            status.className = 'err';
+        }
+        setTimeout(() => { status.textContent = ''; status.className = ''; }, 2500);
     });
+
+    document.getElementById('clear-log').addEventListener('click', () => { document.getElementById('log').innerHTML = ''; });
+    document.getElementById('btn-gather').addEventListener('click', async () => { await postJson('/api/action/control/', { type: 'gather_minerals' }); });
+    document.getElementById('btn-scout').addEventListener('click', async () => { await postJson('/api/action/control/', { type: 'scout' }); });
+    document.getElementById('btn-block').addEventListener('click', async () => { await postJson('/api/action/control/', { type: 'block_entrance' }); });
+    document.getElementById('btn-auto').addEventListener('click', async () => { await postJson('/api/action/control/', { type: 'set_auto_play' }); });
+    document.getElementById('btn-manual').addEventListener('click', async () => { await postJson('/api/action/control/', { type: 'set_manual' }); });
+}
+
+// ── Script editor ──────────────────────────────────────────────────────────
+let editorSid = null;
+
+async function loadScriptIntoEditor(sid, label) {
+    editorSid = sid;
+    const titleEl = document.getElementById('editor-title');
+    const codeEl  = document.getElementById('editor-code');
+    const saveBtn = document.getElementById('editor-save');
+    const runBtn  = document.getElementById('editor-run');
+    const status  = document.getElementById('editor-status');
+
+    titleEl.textContent = label || sid;
+    saveBtn.setAttribute('data-sid', sid);
+    runBtn.setAttribute('data-sid', sid);
+    saveBtn.disabled = false;
+    runBtn.disabled  = false;
+    status.textContent = '로딩 중…';
+    status.className = '';
+
+    // Switch to editor tab
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.getAttribute('data-tab') === 'editor'));
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('active', p.id === 'pane-editor'));
+
+    try {
+        const res = await fetch('/api/scripts/' + encodeURIComponent(sid) + '/');
+        if (res.status === 404) {
+            codeEl.value = '# ' + (label || sid) + ' 스크립트가 없습니다.\n# 여기에 코드를 작성하고 저장하세요.\n\nimport time\n\nctx.set_opening("' + sid.replace(/-/g, '/').replace(/_/g, '.') + '")\n';
+            status.textContent = '새 파일';
+        } else if (res.ok) {
+            const data = await res.json();
+            codeEl.value = data.content || '';
+            status.textContent = '로드 완료: ' + sid;
+        } else {
+            status.textContent = '로드 실패';
+            status.className = 'err';
+        }
+    } catch (err) {
+        status.textContent = '오류: ' + err.message;
+        status.className = 'err';
+    }
+    setTimeout(() => { status.textContent = ''; status.className = ''; }, 2000);
+}
+
+async function pollSysinfo() {
+    try {
+        const res = await fetch('/api/sysinfo/');
+        if (!res.ok) return;
+        const d = await res.json();
+        document.getElementById('si-cpu').textContent = d.cpu;
+        document.getElementById('si-mem').textContent = d.mem;
+        document.getElementById('si-disk').textContent = d.disk_pct + ' (' + d.disk_used + '/' + d.disk_total + 'G)';
+    } catch (_) {}
 }
 
 renderSnapshot(state.snapshot);
 setupForms();
 connectEvents();
+pollSysinfo();
+setInterval(pollSysinfo, 3000);
 </script>
 </body>
 </html>

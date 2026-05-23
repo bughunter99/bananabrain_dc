@@ -159,6 +159,44 @@ static void parse_action_json(const std::string& json,
     }
 }
 
+// Convert a CP_ACP (CP949 on Korean Windows) string to UTF-8.
+// Pure-ASCII strings pass through unchanged (no-op).
+static std::string ansi_to_utf8(const std::string& s)
+{
+    if (s.empty()) return s;
+    bool has_high = false;
+    for (unsigned char c : s) if (c >= 0x80) { has_high = true; break; }
+    if (!has_high) return s;
+    int wlen = MultiByteToWideChar(CP_ACP, 0, s.c_str(), static_cast<int>(s.size()), nullptr, 0);
+    if (wlen <= 0) return s;
+    std::wstring wstr(wlen, L'\0');
+    MultiByteToWideChar(CP_ACP, 0, s.c_str(), static_cast<int>(s.size()), &wstr[0], wlen);
+    int ulen = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), wlen, nullptr, 0, nullptr, nullptr);
+    if (ulen <= 0) return s;
+    std::string utf8(ulen, '\0');
+    WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), wlen, &utf8[0], ulen, nullptr, nullptr);
+    return utf8;
+}
+
+// Convert a UTF-8 string to CP_ACP (CP949 on Korean Windows).
+// Used before passing user-supplied text to Broodwar->sendText().
+static std::string utf8_to_ansi(const std::string& s)
+{
+    if (s.empty()) return s;
+    bool has_high = false;
+    for (unsigned char c : s) if (c >= 0x80) { has_high = true; break; }
+    if (!has_high) return s;
+    int wlen = MultiByteToWideChar(CP_UTF8, 0, s.c_str(), static_cast<int>(s.size()), nullptr, 0);
+    if (wlen <= 0) return s;
+    std::wstring wstr(wlen, L'\0');
+    MultiByteToWideChar(CP_UTF8, 0, s.c_str(), static_cast<int>(s.size()), &wstr[0], wlen);
+    int alen = WideCharToMultiByte(CP_ACP, 0, wstr.c_str(), wlen, nullptr, 0, nullptr, nullptr);
+    if (alen <= 0) return s;
+    std::string ansi(alen, '\0');
+    WideCharToMultiByte(CP_ACP, 0, wstr.c_str(), wlen, &ansi[0], alen, nullptr, nullptr);
+    return ansi;
+}
+
 } // anonymous namespace
 
 // ---------------------------------------------------------------------------
@@ -294,8 +332,10 @@ void MsgBusBridge::poll_actions()
 // ---------------------------------------------------------------------------
 // JSON helpers
 // ---------------------------------------------------------------------------
-std::string MsgBusBridge::escape_json(const std::string& s)
+std::string MsgBusBridge::escape_json(const std::string& raw)
 {
+    // Ensure any CP949 bytes from game events are emitted as valid UTF-8.
+    const std::string s = ansi_to_utf8(raw);
     std::string out;
     out.reserve(s.size() + 8);
     for (char c : s) {
@@ -357,7 +397,8 @@ void MsgBusBridge::apply_action_object(const std::string& type,
     if (type == "send_text") {
         auto it = sf.find("text");
         if (it != sf.end() && !it->second.empty()) {
-            Broodwar->sendText("%s", it->second.c_str());
+            // Text arrives as UTF-8 from Python; convert to ANSI (CP949) for StarCraft.
+            Broodwar->sendText("%s", utf8_to_ansi(it->second).c_str());
         }
         return;
     }
@@ -368,21 +409,36 @@ void MsgBusBridge::apply_action_object(const std::string& type,
     }
 
     if (type == "gather_minerals") {
+        set_manual_mode(true);  // ensure AI does not override worker orders
         gather_workers_minerals();
         bwapi_log("gather_minerals command applied");
         return;
     }
 
+    if (type == "scout") {
+        set_manual_mode(true);
+        scout_with_worker();
+        bwapi_log("scout command applied");
+        return;
+    }
+
+    if (type == "block_entrance") {
+        set_manual_mode(true);
+        block_entrance_with_workers();
+        bwapi_log("block_entrance command applied");
+        return;
+    }
+
     if (type == "set_auto_play") {
         set_manual_mode(false);
-        Broodwar->sendText("[ai_dc] 자율 플레이 시작");
+        Broodwar->sendText("%s", utf8_to_ansi("[ai_dc] 자율 플레이 시작").c_str());
         bwapi_log("auto play enabled");
         return;
     }
 
     if (type == "set_manual") {
         set_manual_mode(true);
-        Broodwar->sendText("[ai_dc] 수동 제어 모드");
+        Broodwar->sendText("%s", utf8_to_ansi("[ai_dc] 수동 제어 모드").c_str());
         bwapi_log("manual mode enabled");
         return;
     }
@@ -392,7 +448,7 @@ void MsgBusBridge::apply_action_object(const std::string& type,
         if (it != sf.end() && !it->second.empty()) {
             bool applied = force_strategy_opening(it->second);
             if (applied) {
-                Broodwar->sendText("Switch opening: %s", it->second.c_str());
+                Broodwar->sendText("%s", utf8_to_ansi("Switch opening: " + it->second).c_str());
                 bwapi_log("opening set to " + it->second);
             } else {
                 bwapi_log("failed to set opening " + it->second);

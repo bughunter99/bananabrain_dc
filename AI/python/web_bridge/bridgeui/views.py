@@ -1,12 +1,17 @@
 import json
 import queue
 
+try:
+    import psutil as _psutil
+except ImportError:
+    _psutil = None
 from django.http import JsonResponse, StreamingHttpResponse
 from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
 
-from .bridge import get_bridge_service
+from .bridge import get_bridge_service, REPRESENTATIVE_STRATEGIES
+from . import script_runner
 
 
 def _json_body(request):
@@ -101,7 +106,7 @@ def strategy_action(request):
     return JsonResponse({"ok": True, "action": action})
 
 
-_ALLOWED_CONTROL_TYPES = {"gather_minerals", "set_auto_play", "set_manual"}
+_ALLOWED_CONTROL_TYPES = {"gather_minerals", "set_auto_play", "set_manual", "scout", "block_entrance"}
 
 
 @csrf_exempt
@@ -115,3 +120,90 @@ def control_action(request):
     action = {"type": action_type}
     service.send_action(action)
     return JsonResponse({"ok": True, "action": action})
+
+
+@require_GET
+def sysinfo_api(request):
+    if _psutil is None:
+        return JsonResponse({"cpu": None, "mem": None, "disk_used": None, "disk_total": None, "disk_pct": None})
+    disk = _psutil.disk_usage("/")
+    return JsonResponse({
+        "cpu": _psutil.cpu_percent(interval=None),
+        "mem": _psutil.virtual_memory().percent,
+        "disk_used": round(disk.used / (1024 ** 3), 1),
+        "disk_total": round(disk.total / (1024 ** 3), 1),
+        "disk_pct": disk.percent,
+    })
+
+
+# ---------------------------------------------------------------------------
+# Script editor views
+# ---------------------------------------------------------------------------
+
+def _opening_to_script_id(opening):
+    """Map an opening string to the script file id (no slashes/dots)."""
+    return opening.replace("/", "-").replace(".", "_")
+
+
+def _build_script_catalog():
+    """Return list of dicts with race/label/opening/script_id/exists."""
+    catalog = []
+    for race, strategies in REPRESENTATIVE_STRATEGIES.items():
+        for s in strategies:
+            sid = _opening_to_script_id(s["opening"])
+            catalog.append({
+                "race": race,
+                "label": s["label"],
+                "opening": s["opening"],
+                "summary": s.get("summary", ""),
+                "script_id": sid,
+                "exists": script_runner.read_script(sid) is not None,
+            })
+    return catalog
+
+
+@require_GET
+def scripts_page(request):
+    catalog = _build_script_catalog()
+    return render(request, "scripts.html", {"catalog_json": json.dumps(catalog, ensure_ascii=False)})
+
+
+@csrf_exempt
+def script_detail(request, script_id):
+    """GET: return script source; POST: save script source."""
+    # Validate script_id: only alphanum, dash, underscore, dot
+    import re
+    if not re.match(r'^[A-Za-z0-9_\-\.]+$', script_id):
+        return JsonResponse({"ok": False, "error": "invalid script id"}, status=400)
+
+    if request.method == "GET":
+        content = script_runner.read_script(script_id)
+        if content is None:
+            return JsonResponse({"ok": False, "error": "not found"}, status=404)
+        return JsonResponse({"ok": True, "script_id": script_id, "content": content})
+
+    if request.method == "POST":
+        body = _json_body(request)
+        content = body.get("content", "")
+        script_runner.write_script(script_id, content)
+        return JsonResponse({"ok": True, "script_id": script_id})
+
+    return JsonResponse({"ok": False, "error": "method not allowed"}, status=405)
+
+
+@csrf_exempt
+@require_POST
+def script_run(request, script_id):
+    """Execute the strategy script in a background thread."""
+    import re
+    if not re.match(r'^[A-Za-z0-9_\-\.]+$', script_id):
+        return JsonResponse({"ok": False, "error": "invalid script id"}, status=400)
+
+    service = get_bridge_service()
+    try:
+        script_runner.run_script(script_id, service)
+    except FileNotFoundError as exc:
+        return JsonResponse({"ok": False, "error": str(exc)}, status=404)
+    except Exception as exc:
+        return JsonResponse({"ok": False, "error": str(exc)}, status=500)
+    return JsonResponse({"ok": True, "script_id": script_id})

@@ -139,6 +139,8 @@ bool force_strategy_opening(const std::string& opening);
 void set_manual_mode(bool manual);
 bool is_manual_mode();
 void gather_workers_minerals();
+void scout_with_worker();
+void block_entrance_with_workers();
 
 class PerformanceTimer
 {

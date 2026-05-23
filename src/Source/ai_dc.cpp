@@ -246,7 +246,7 @@ void ai_dc::onStart()
 	});
 
 	// Enable the UserInput flag, which allows us to control the bot and type messages.
-	//Broodwar->enableFlag(Flag::UserInput);
+	Broodwar->enableFlag(Flag::UserInput);
  
 	if (!Broodwar->isReplay())
 	{
@@ -327,7 +327,7 @@ void ai_dc::onStart()
 void ai_dc::onEnd(bool winner)
 {
 	if (g_active_bot == this) g_active_bot = nullptr;
-	g_manual_mode = false;
+	set_manual_mode(false);  // sends manual_mode_changed event so Python state stays in sync
 
 	log_event("onEnd", {
 		arg("frame", std::to_string(Broodwar->getFrameCount())),
@@ -408,6 +408,55 @@ void gather_workers_minerals()
 	}
 }
 
+void scout_with_worker()
+{
+	if (BroodwarPtr == nullptr || Broodwar->self() == nullptr) return;
+	// Pick the first idle or mineral-gathering worker
+	Unit scout = nullptr;
+	for (Unit u : Broodwar->self()->getUnits()) {
+		if (!u->exists() || !u->getType().isWorker()) continue;
+		scout = u;
+		if (u->isIdle()) break; // prefer idle worker
+	}
+	if (!scout) return;
+	// Find a start location that is not ours to scout
+	TilePosition home = Broodwar->self()->getStartLocation();
+	for (const TilePosition& loc : Broodwar->getStartLocations()) {
+		if (loc == home) continue;
+		scout->move(Position(loc));
+		return;
+	}
+}
+
+void block_entrance_with_workers()
+{
+	if (BroodwarPtr == nullptr || Broodwar->self() == nullptr) return;
+	auto& bwem = BWEM::Map::Instance();
+	TilePosition home = Broodwar->self()->getStartLocation();
+	// Find the BWEM area containing home base
+	const BWEM::Area* home_area = bwem.GetNearestArea(home);
+	if (!home_area) return;
+	// Find the widest chokepoint bordering the home area
+	const BWEM::ChokePoint* best_cp = nullptr;
+	int best_width = -1;
+	for (const BWEM::Area* adj : home_area->AccessibleNeighbours()) {
+		for (const BWEM::ChokePoint& cp : home_area->ChokePoints(adj)) {
+			if (cp.Blocked()) continue;
+			int w = (int)cp.Geometry().size();
+			if (w > best_width) { best_width = w; best_cp = &cp; }
+		}
+	}
+	if (!best_cp) return;
+	Position choke_pos(best_cp->Center());
+	// Send up to 3 workers to block
+	int sent = 0;
+	for (Unit u : Broodwar->self()->getUnits()) {
+		if (!u->exists() || !u->getType().isWorker()) continue;
+		u->move(choke_pos);
+		if (++sent >= 3) break;
+	}
+}
+
 void ai_dc::onFrame()
 {
 	if (!initialized_) return;
@@ -432,9 +481,9 @@ void ai_dc::onFrame()
 	if (!g_manual_mode) {
 		strategy_->frame();
 		after();
+		surrender_if_hope_lost();
 	}
 	log_recent_unit_commands();
-	surrender_if_hope_lost();
 	
 	if (configuration.draw_enabled()) {
 		draw();
