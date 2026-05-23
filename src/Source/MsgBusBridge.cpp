@@ -200,6 +200,15 @@ static std::string utf8_to_ansi(const std::string& s)
 } // anonymous namespace
 
 // ---------------------------------------------------------------------------
+// unit_type_by_name: look up a BWAPI UnitType by its getName() string.
+// UnitType has no built-in getUnitType(string) in BWAPI 4.x, so we iterate.
+static UnitType unit_type_by_name(const std::string& name)
+{
+    for (auto& ut : UnitTypes::allUnitTypes()) {
+        if (ut.getName() == name) return ut;
+    }
+    return UnitTypes::Unknown;
+}
 
 void MsgBusBridge::bwapi_log(const std::string& text)
 {
@@ -302,6 +311,25 @@ void MsgBusBridge::send_event(const std::string& event_name,
            reinterpret_cast<const sockaddr*>(agent_addr_),
            sizeof(sockaddr_in));
     // Ignore WSAEWOULDBLOCK / errors - fire-and-forget
+}
+
+// ---------------------------------------------------------------------------
+// send_raw_event  -  like send_event but payload is already serialised JSON
+// ---------------------------------------------------------------------------
+void MsgBusBridge::send_raw_event(const std::string& event_name,
+                                   const std::string& raw_payload_json)
+{
+    if (!sock_valid(send_sock_)) return;
+
+    int frame = (BroodwarPtr != nullptr) ? Broodwar->getFrameCount() : -1;
+    const std::string msg = build_message(event_name, frame, raw_payload_json);
+
+    sendto(to_sock(send_sock_),
+           msg.c_str(),
+           static_cast<int>(msg.size()),
+           0,
+           reinterpret_cast<const sockaddr*>(agent_addr_),
+           sizeof(sockaddr_in));
 }
 
 // ---------------------------------------------------------------------------
@@ -490,6 +518,78 @@ void MsgBusBridge::apply_action_object(const std::string& type,
         auto xi = nf.find("x"), yi = nf.find("y");
         if (xi != nf.end() && yi != nf.end()) {
             unit->attack(Position(xi->second, yi->second));
+        }
+        return;
+    }
+
+    // ----- New Python-control commands -----
+
+    if (type == "train_unit") {
+        auto type_it = sf.find("unit_type");
+        if (type_it != sf.end()) {
+            UnitType ut = unit_type_by_name(type_it->second);
+            if (ut != UnitTypes::Unknown) {
+                unit->train(ut);
+                bwapi_log("train_unit: " + type_it->second);
+            } else {
+                bwapi_log("train_unit: unknown type " + type_it->second);
+            }
+        }
+        return;
+    }
+
+    if (type == "build") {
+        auto btype_it = sf.find("building_type");
+        auto tx_it = nf.find("tile_x"), ty_it = nf.find("tile_y");
+        if (btype_it != sf.end() && tx_it != nf.end() && ty_it != nf.end()) {
+            UnitType bt = unit_type_by_name(btype_it->second);
+            if (bt != UnitTypes::Unknown) {
+                unit->build(bt, TilePosition(tx_it->second, ty_it->second));
+                bwapi_log("build: " + btype_it->second + " at tile " +
+                          std::to_string(tx_it->second) + "," + std::to_string(ty_it->second));
+            } else {
+                bwapi_log("build: unknown type " + btype_it->second);
+            }
+        }
+        return;
+    }
+
+    if (type == "gather_unit") {
+        auto tgt_it = nf.find("target_id");
+        if (tgt_it != nf.end()) {
+            Unit target = Broodwar->getUnit(tgt_it->second);
+            if (target != nullptr && target->exists()) {
+                unit->gather(target);
+            }
+        }
+        return;
+    }
+
+    if (type == "set_rally_point") {
+        auto xi = nf.find("x"), yi = nf.find("y");
+        if (xi != nf.end() && yi != nf.end()) {
+            unit->setRallyPoint(Position(xi->second, yi->second));
+        }
+        return;
+    }
+
+    if (type == "find_build_location") {
+        auto btype_it = sf.find("building_type");
+        if (btype_it != sf.end()) {
+            UnitType bt = unit_type_by_name(btype_it->second);
+            if (bt != UnitTypes::Unknown) {
+                auto nx_it = nf.find("near_tile_x"), ny_it = nf.find("near_tile_y");
+                TilePosition near_pos = (nx_it != nf.end() && ny_it != nf.end())
+                    ? TilePosition(nx_it->second, ny_it->second)
+                    : Broodwar->self()->getStartLocation();
+                TilePosition result = Broodwar->getBuildLocation(bt, near_pos, 40, false);
+                bool ok = result.isValid();
+                send_raw_event("build_location_result",
+                    "{\"building_type\":\"" + escape_json(btype_it->second) + "\"" +
+                    ",\"tile_x\":" + std::to_string(ok ? result.x : -1) +
+                    ",\"tile_y\":" + std::to_string(ok ? result.y : -1) +
+                    ",\"ok\":" + (ok ? "true" : "false") + "}");
+            }
         }
         return;
     }

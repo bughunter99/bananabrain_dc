@@ -40,10 +40,17 @@ public:
     void send_event(const std::string& event_name,
                     const std::map<std::string, std::string>& payload = {});
 
+    // Fire-and-forget: sends event with a pre-built raw JSON payload object/array.
+    void send_raw_event(const std::string& event_name,
+                        const std::string& raw_payload_json);
+
     // Drain incoming action datagrams and apply them; call once per frame.
     void poll_actions();
 
     bool running() const { return running_; }
+
+    // Public so ai_dc.cpp can use it when building raw JSON payloads.
+    static std::string escape_json(const std::string& s);
 
 private:
     bool      running_      = false;
@@ -52,8 +59,6 @@ private:
     uintptr_t send_sock_    = ~uintptr_t(0);  // INVALID_SOCKET
     uintptr_t recv_sock_    = ~uintptr_t(0);
     char      agent_addr_[16] = {};           // opaque storage for sockaddr_in (16 bytes)
-
-    static std::string escape_json(const std::string& s);
     static std::string payload_to_json(const std::map<std::string, std::string>& payload);
     static std::string build_message(const std::string& event_name,
                                      int frame,

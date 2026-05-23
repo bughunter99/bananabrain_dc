@@ -239,11 +239,70 @@ void ai_dc::onStart()
 	}, "none");
 
 	python_bridge.start();
-	python_bridge.send_event("onStart", {
-		{"self_race", Broodwar->self() ? Broodwar->self()->getRace().getName() : "Unknown"},
-		{"enemy_count", std::to_string((int)Broodwar->enemies().size())},
-		{"is_replay", Broodwar->isReplay() ? "true" : "false"}
-	});
+
+	// Build rich onStart payload (mineral fields, geysers, own starting units, start tile)
+	{
+		auto esc = [](const std::string& s) { return MsgBusBridge::escape_json(s); };
+
+		// Mineral fields
+		std::string minerals_json = "[";
+		bool first = true;
+		for (auto m : Broodwar->getMinerals()) {
+			if (!first) minerals_json += ",";
+			first = false;
+			minerals_json += "{\"id\":" + std::to_string(m->getID()) +
+			                 ",\"x\":" + std::to_string(m->getPosition().x) +
+			                 ",\"y\":" + std::to_string(m->getPosition().y) +
+			                 ",\"res\":" + std::to_string(m->getResources()) + "}";
+		}
+		minerals_json += "]";
+
+		// Vespene geysers
+		std::string geysers_json = "[";
+		first = true;
+		for (auto g : Broodwar->getGeysers()) {
+			if (!first) geysers_json += ",";
+			first = false;
+			geysers_json += "{\"id\":" + std::to_string(g->getID()) +
+			                ",\"x\":" + std::to_string(g->getPosition().x) +
+			                ",\"y\":" + std::to_string(g->getPosition().y) + "}";
+		}
+		geysers_json += "]";
+
+		// Own starting units
+		std::string start_units_json = "[";
+		first = true;
+		if (Broodwar->self()) {
+			for (auto u : Broodwar->self()->getUnits()) {
+				if (!first) start_units_json += ",";
+				first = false;
+				start_units_json += "{\"id\":" + std::to_string(u->getID()) +
+				                    ",\"type\":\"" + esc(u->getType().getName()) + "\"" +
+				                    ",\"x\":" + std::to_string(u->getPosition().x) +
+				                    ",\"y\":" + std::to_string(u->getPosition().y) + "}";
+			}
+		}
+		start_units_json += "]";
+
+		// Start tile (TilePosition * 32 = pixel position of tile top-left)
+		TilePosition start_tile = Broodwar->self() ? Broodwar->self()->getStartLocation() : TilePositions::Invalid;
+		std::string stx = std::to_string(start_tile.isValid() ? start_tile.x : -1);
+		std::string sty = std::to_string(start_tile.isValid() ? start_tile.y : -1);
+
+		std::string self_race = Broodwar->self() ? Broodwar->self()->getRace().getName() : "Unknown";
+		int enemy_count = (int)Broodwar->enemies().size();
+
+		std::string payload = "{\"self_race\":\"" + esc(self_race) + "\"" +
+		                      ",\"enemy_count\":" + std::to_string(enemy_count) +
+		                      ",\"is_replay\":" + (Broodwar->isReplay() ? "true" : "false") +
+		                      ",\"start_tile_x\":" + stx +
+		                      ",\"start_tile_y\":" + sty +
+		                      ",\"mineral_fields\":" + minerals_json +
+		                      ",\"geysers\":" + geysers_json +
+		                      ",\"units\":" + start_units_json + "}";
+
+		python_bridge.send_raw_event("onStart", payload);
+	}
 
 	// Enable the UserInput flag, which allows us to control the bot and type messages.
 	Broodwar->enableFlag(Flag::UserInput);
@@ -465,14 +524,36 @@ void ai_dc::onFrame()
 
 	python_bridge.poll_actions();
 
-	if ((Broodwar->getFrameCount() % 240) == 0) {
-		python_bridge.send_event("onFrame", {
-			{"minerals", std::to_string(Broodwar->self()->minerals())},
-			{"gas", std::to_string(Broodwar->self()->gas())},
-			{"supply_used", std::to_string(Broodwar->self()->supplyUsed())},
-			{"supply_total", std::to_string(Broodwar->self()->supplyTotal())},
-			{"mode", strategy_ ? strategy_->mode() : ""}
-		});
+	if ((Broodwar->getFrameCount() % 24) == 0) {
+		// Build unit snapshot JSON
+		auto esc = [](const std::string& s) { return MsgBusBridge::escape_json(s); };
+		std::string units_json = "[";
+		bool first = true;
+		for (auto u : Broodwar->self()->getUnits()) {
+			if (!first) units_json += ",";
+			first = false;
+			units_json += "{\"id\":" + std::to_string(u->getID()) +
+			              ",\"type\":\"" + esc(u->getType().getName()) + "\"" +
+			              ",\"x\":" + std::to_string(u->getPosition().x) +
+			              ",\"y\":" + std::to_string(u->getPosition().y) +
+			              ",\"hp\":" + std::to_string(u->getHitPoints()) +
+			              ",\"shields\":" + std::to_string(u->getShields()) +
+			              ",\"idle\":" + (u->isIdle() ? "true" : "false") +
+			              ",\"constructing\":" + (u->isConstructing() ? "true" : "false") +
+			              ",\"carrying\":" + ((u->isCarryingMinerals() || u->isCarryingGas()) ? "true" : "false") +
+			              ",\"own\":true}";
+		}
+		units_json += "]";
+
+		std::string frame_payload =
+			"{\"minerals\":" + std::to_string(Broodwar->self()->minerals()) +
+			",\"gas\":" + std::to_string(Broodwar->self()->gas()) +
+			",\"supply_used\":" + std::to_string(Broodwar->self()->supplyUsed()) +
+			",\"supply_total\":" + std::to_string(Broodwar->self()->supplyTotal()) +
+			",\"mode\":\"" + esc(strategy_ ? strategy_->mode() : "") + "\"" +
+			",\"units\":" + units_json + "}";
+
+		python_bridge.send_raw_event("onFrame", frame_payload);
 	}
 	
 	PerformanceTimer performance_timer;
@@ -575,10 +656,14 @@ void ai_dc::onUnitCreate(BWAPI::Unit unit)
 	training_manager.onUnitCreate(unit);
 	auto unit_player = unit->getPlayer();
 	if (unit_player == Broodwar->self() || (unit_player != nullptr && unit_player->isEnemy(Broodwar->self()))) {
-		python_bridge.send_event("onUnitCreate", {
-			{"unit_type", unit->getType().getName()},
-			{"player", unit_player ? unit_player->getName() : "Unknown"}
-		});
+		bool own = (unit_player == Broodwar->self());
+		python_bridge.send_raw_event("onUnitCreate",
+			"{\"id\":" + std::to_string(unit->getID()) +
+			",\"type\":\"" + MsgBusBridge::escape_json(unit->getType().getName()) + "\"" +
+			",\"x\":" + std::to_string(unit->getPosition().x) +
+			",\"y\":" + std::to_string(unit->getPosition().y) +
+			",\"player\":\"" + MsgBusBridge::escape_json(unit_player ? unit_player->getName() : "Unknown") + "\"" +
+			",\"own\":" + (own ? "true" : "false") + "}");
 	}
 }
 
@@ -594,12 +679,16 @@ void ai_dc::onUnitDestroy(BWAPI::Unit unit)
 	bwem_handle_destroy_safe(unit);
 	if (unit->getType().isBuilding()) connectivity_grid.invalidate();
 	building_placement_manager.onUnitDestroy(unit);
-	auto unit_player = unit->getPlayer();
+	int destroy_id = unit ? unit->getID() : -1;
+	std::string destroy_type = unit ? unit->getType().getName() : "";
+	auto unit_player = unit ? unit->getPlayer() : nullptr;
 	if (unit_player == Broodwar->self() || (unit_player != nullptr && unit_player->isEnemy(Broodwar->self()))) {
-		python_bridge.send_event("onUnitDestroy", {
-			{"unit_type", unit->getType().getName()},
-			{"player", unit_player ? unit_player->getName() : "Unknown"}
-		});
+		bool own = (unit_player == Broodwar->self());
+		python_bridge.send_raw_event("onUnitDestroy",
+			"{\"id\":" + std::to_string(destroy_id) +
+			",\"type\":\"" + MsgBusBridge::escape_json(destroy_type) + "\"" +
+			",\"player\":\"" + MsgBusBridge::escape_json(unit_player ? unit_player->getName() : "Unknown") + "\"" +
+			",\"own\":" + (own ? "true" : "false") + "}");
 	}
 	if (unit != nullptr) {
 		last_unit_commands_.erase(unit->getID());
@@ -646,10 +735,14 @@ void ai_dc::onUnitComplete(BWAPI::Unit unit)
 	training_manager.onUnitComplete(unit);
 	auto unit_player = unit->getPlayer();
 	if (unit_player == Broodwar->self() || (unit_player != nullptr && unit_player->isEnemy(Broodwar->self()))) {
-		python_bridge.send_event("onUnitComplete", {
-			{"unit_type", unit->getType().getName()},
-			{"player", unit_player ? unit_player->getName() : "Unknown"}
-		});
+		bool own = (unit_player == Broodwar->self());
+		python_bridge.send_raw_event("onUnitComplete",
+			"{\"id\":" + std::to_string(unit->getID()) +
+			",\"type\":\"" + MsgBusBridge::escape_json(unit->getType().getName()) + "\"" +
+			",\"x\":" + std::to_string(unit->getPosition().x) +
+			",\"y\":" + std::to_string(unit->getPosition().y) +
+			",\"player\":\"" + MsgBusBridge::escape_json(unit_player ? unit_player->getName() : "Unknown") + "\"" +
+			",\"own\":" + (own ? "true" : "false") + "}");
 	}
 }
 
