@@ -86,7 +86,14 @@ class UdpBridgeService:
             "supply_used": None,
             "supply_total": None,
             "manual_mode": None,
+            "python_mode": False,
             "last_error": None,
+            "start_tile_x": -1,
+            "start_tile_y": -1,
+            "mineral_fields": [],
+            "geysers": [],
+            "own_units": [],
+            "enemy_units": [],
         }
         self._subscribers = {}  # type: Dict[int, queue.Queue]
         self._subscriber_ids = count(1)
@@ -168,6 +175,11 @@ class UdpBridgeService:
             self._state["self_race"] = payload.get("self_race")
             self._state["enemy_count"] = payload.get("enemy_count")
             self._state["is_replay"] = payload.get("is_replay")
+            self._state["start_tile_x"] = payload.get("start_tile_x", -1)
+            self._state["start_tile_y"] = payload.get("start_tile_y", -1)
+            self._state["mineral_fields"] = payload.get("mineral_fields", [])
+            self._state["geysers"] = payload.get("geysers", [])
+            self._state["own_units"] = payload.get("units", [])
         elif event_name == "onStart_initialized":
             self._state["is_1v1"] = payload.get("is_1v1")
             self._state["is_ffa"] = payload.get("is_ffa")
@@ -178,12 +190,27 @@ class UdpBridgeService:
             self._state["supply_used"] = payload.get("supply_used")
             self._state["supply_total"] = payload.get("supply_total")
             self._state["mode"] = payload.get("mode")
+            if "python_mode" in payload:
+                self._state["python_mode"] = payload["python_mode"]
+            if "start_tile_x" in payload:
+                self._state["start_tile_x"] = payload["start_tile_x"]
+            if "start_tile_y" in payload:
+                self._state["start_tile_y"] = payload["start_tile_y"]
+            if "own_units" in payload:
+                self._state["own_units"] = payload["own_units"]
+            if "enemy_units" in payload:
+                self._state["enemy_units"] = payload["enemy_units"]
         elif event_name == "onEnd":
             self._state["status"] = "game ended"
             self._state["winner"] = payload.get("winner")
             self._state["manual_mode"] = None
+            self._state["python_mode"] = False
+            self._state["own_units"] = []
+            self._state["enemy_units"] = []
         elif event_name == "manual_mode_changed":
             self._state["manual_mode"] = payload.get("manual_mode") == "true"
+        elif event_name == "python_mode_changed":
+            self._state["python_mode"] = payload.get("python_mode") == "true"
 
     def emit_local_event(self, event_name, payload):
         event = {

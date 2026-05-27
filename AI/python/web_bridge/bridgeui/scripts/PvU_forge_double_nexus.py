@@ -1,18 +1,23 @@
-"""포지 더블넥: 포토캐논 수비 후 빠른 넥서스 확보
-PvU_forge 오프닝으로 시작하고 안정화 후 확장 타이밍을 노린다.
-입구 막기로 초반을 더 견고하게 방어한다.
-"""
-
+"""PvU Forge Double Nexus: Forge->Cannon->expand->Gate->Zealots"""
+import sys, os; sys.path.insert(0, os.path.dirname(__file__))
+from _helpers import StrategyHelper
 
 def run(ctx):
-    # 포지 오프닝으로 시작 (C++ 최근접 상수)
-    ctx.set_opening("PvU_forge")
-    ctx.log("포지 더블넥: 포지 오프닝 시작")
-
-    # 초반 안정화 대기 (약 3분 = 3 * 60 초)
-    ctx.log("포지 더블넥: 수비 안정화 대기 중...")
-    ctx.wait(180)
-
-    # 앞마당 확장 타이밍 — 일꾼 채취 모드로 전환해 자원 확보
-    ctx.control("gather_minerals")
-    ctx.log("포지 더블넥: 앞마당 확장 타이밍 — 미네랄 수집 모드 전환")
+    h = StrategyHelper(ctx)
+    if not h.setup():
+        return
+    ctx.log("PvU Forge Double Nexus 시작")
+    while not ctx._stopped:
+        h.manage_supply(threshold=2)
+        h.manage_workers(desired=20)
+        h.try_build("Protoss Pylon", 100, max_count=99, cooldown=12.0)
+        h.try_build("Protoss Forge", 150, max_count=1)
+        if h.has("Protoss Forge"):
+            h.try_build("Protoss Photon Cannon", 150, max_count=1)
+            if h.minerals() >= 400:
+                h.expand(cost=400)
+            h.try_build("Protoss Gateway", 150, max_count=3)
+        h.try_train("Protoss Gateway", "Protoss Zealot", 100)
+        h.attack_with(["Protoss Zealot"], min_army=8)
+        ctx.gather_idle_workers()
+        ctx.wait(0.25)

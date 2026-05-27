@@ -7,6 +7,7 @@
 namespace {
 	ai_dc* g_active_bot = nullptr;
 	bool g_manual_mode = false;
+	bool g_python_mode = false;
 
 	std::unique_ptr<Strategy> create_strategy_for_race(Race race)
 	{
@@ -364,7 +365,8 @@ void ai_dc::onStart()
 			worker_manager.init_optimal_mining_data();
 			tactics_manager.set_is_ffa(is_ffa_);
 			initialized_ = true;
-			g_manual_mode = true;  // start paused: wait for UI command
+			g_manual_mode = true;   // start paused: wait for UI command
+			g_python_mode = false;  // reset python mode on new game
 			log_event("onStart_initialized", {
 				arg("frame", std::to_string(Broodwar->getFrameCount())),
 				arg("is_1v1", is_1v1_ ? "true" : "false"),
@@ -450,6 +452,21 @@ bool is_manual_mode()
 	return g_manual_mode;
 }
 
+void set_python_mode(bool python_mode)
+{
+	g_python_mode = python_mode;
+	if (BroodwarPtr != nullptr && Broodwar->self() != nullptr) {
+		python_bridge.send_event("python_mode_changed", {
+			{"python_mode", python_mode ? "true" : "false"}
+		});
+	}
+}
+
+bool is_python_mode()
+{
+	return g_python_mode;
+}
+
 void gather_workers_minerals()
 {
 	if (BroodwarPtr == nullptr || Broodwar->self() == nullptr) return;
@@ -524,14 +541,29 @@ void ai_dc::onFrame()
 
 	python_bridge.poll_actions();
 
-	if ((Broodwar->getFrameCount() % 24) == 0) {
-		// Build unit snapshot JSON
+	// python_mode: 6프레임마다, 일반: 24프레임마다 상태 전송
+	const int frame_interval = g_python_mode ? 6 : 24;
+	if ((Broodwar->getFrameCount() % frame_interval) == 0) {
 		auto esc = [](const std::string& s) { return MsgBusBridge::escape_json(s); };
+
+		// 자신의 유닛 목록 (건물 포함)
 		std::string units_json = "[";
 		bool first = true;
 		for (auto u : Broodwar->self()->getUnits()) {
 			if (!first) units_json += ",";
 			first = false;
+
+			// 건물이 훈련 중인 유닛 타입
+			std::string training_type_json = "null";
+			if (u->isTraining() && !u->getTrainingQueue().empty()) {
+				training_type_json = "\"" + esc(u->getTrainingQueue().front().getName()) + "\"";
+			}
+			// 일꾼이 건설 중인 건물 타입
+			std::string build_type_json = "null";
+			if (u->getBuildType() != UnitTypes::None) {
+				build_type_json = "\"" + esc(u->getBuildType().getName()) + "\"";
+			}
+
 			units_json += "{\"id\":" + std::to_string(u->getID()) +
 			              ",\"type\":\"" + esc(u->getType().getName()) + "\"" +
 			              ",\"x\":" + std::to_string(u->getPosition().x) +
@@ -541,9 +573,20 @@ void ai_dc::onFrame()
 			              ",\"idle\":" + (u->isIdle() ? "true" : "false") +
 			              ",\"constructing\":" + (u->isConstructing() ? "true" : "false") +
 			              ",\"carrying\":" + ((u->isCarryingMinerals() || u->isCarryingGas()) ? "true" : "false") +
-			              ",\"own\":true}";
+			              ",\"completed\":" + (u->isCompleted() ? "true" : "false") +
+			              ",\"training\":" + (u->isTraining() ? "true" : "false") +
+			              ",\"is_worker\":" + (u->getType().isWorker() ? "true" : "false") +
+			              ",\"is_building\":" + (u->getType().isBuilding() ? "true" : "false") +
+			              ",\"training_type\":" + training_type_json +
+			              ",\"build_type\":" + build_type_json +
+			              "}";
 		}
 		units_json += "]";
+
+		// 자신의 시작 위치 (타일)
+		TilePosition start_tile = Broodwar->self()->getStartLocation();
+		int stx = start_tile.isValid() ? start_tile.x : -1;
+		int sty = start_tile.isValid() ? start_tile.y : -1;
 
 		std::string frame_payload =
 			"{\"minerals\":" + std::to_string(Broodwar->self()->minerals()) +
@@ -551,8 +594,32 @@ void ai_dc::onFrame()
 			",\"supply_used\":" + std::to_string(Broodwar->self()->supplyUsed()) +
 			",\"supply_total\":" + std::to_string(Broodwar->self()->supplyTotal()) +
 			",\"mode\":\"" + esc(strategy_ ? strategy_->mode() : "") + "\"" +
-			",\"units\":" + units_json + "}";
+			",\"python_mode\":" + (g_python_mode ? "true" : "false") +
+			",\"start_tile_x\":" + std::to_string(stx) +
+			",\"start_tile_y\":" + std::to_string(sty) +
+			",\"own_units\":" + units_json;
 
+		// python_mode 일 때 적 유닛(가시 범위 내) 추가
+		if (g_python_mode) {
+			std::string enemy_json = "[";
+			bool efirst = true;
+			for (auto& ep : Broodwar->enemies()) {
+				for (auto eu : ep->getUnits()) {
+					if (!eu->exists() || !eu->isVisible()) continue;
+					if (!efirst) enemy_json += ",";
+					efirst = false;
+					enemy_json += "{\"id\":" + std::to_string(eu->getID()) +
+					              ",\"type\":\"" + esc(eu->getType().getName()) + "\"" +
+					              ",\"x\":" + std::to_string(eu->getPosition().x) +
+					              ",\"y\":" + std::to_string(eu->getPosition().y) +
+					              ",\"hp\":" + std::to_string(eu->getHitPoints()) + "}";
+				}
+			}
+			enemy_json += "]";
+			frame_payload += ",\"enemy_units\":" + enemy_json;
+		}
+
+		frame_payload += "}";
 		python_bridge.send_raw_event("onFrame", frame_payload);
 	}
 	

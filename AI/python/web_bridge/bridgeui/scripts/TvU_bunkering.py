@@ -1,12 +1,20 @@
-"""벙커링: 앞마당/입구 벙커+SCV 초반 올인
-TvZ_2rax(바이오닉+SCV 러쉬) 오프닝을 활용.
-수동 모드로 전환 후 입구 막기를 실행.
-"""
-
+"""TvU Bunkering: Barracks->Bunker x2->Marines"""
+import sys, os; sys.path.insert(0, os.path.dirname(__file__))
+from _helpers import StrategyHelper
 
 def run(ctx):
-    ctx.set_opening("TvZ_2rax")
-    ctx.log("벙커링: 2 Rax 오프닝으로 시작")
-
-    ctx.log("벙커링: 수동 모드 전환 후 입구 차단")
-    ctx.control("block_entrance")
+    h = StrategyHelper(ctx)
+    if not h.setup():
+        return
+    ctx.log("TvU Bunkering 시작")
+    while not ctx._stopped:
+        h.manage_supply(threshold=2)
+        h.manage_workers(desired=14)
+        h.try_build("Terran Supply Depot", 100, max_count=99, cooldown=12.0)
+        h.try_build("Terran Barracks", 150, max_count=2)
+        if h.has("Terran Barracks"):
+            h.try_build("Terran Bunker", 100, max_count=2)
+        h.try_train("Terran Barracks", "Terran Marine", 50)
+        h.attack_with(["Terran Marine"], min_army=6)
+        ctx.gather_idle_workers()
+        ctx.wait(0.25)

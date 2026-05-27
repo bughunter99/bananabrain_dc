@@ -420,6 +420,20 @@ void MsgBusBridge::apply_action_object(const std::string& type,
                                         const std::map<std::string, int>&         nf)
 {
     if (type.empty() || type == "none") return;
+
+    // python_mode / clear_python_mode: BroodwarPtr 없이도 처리 가능
+    if (type == "set_python_mode") {
+        set_python_mode(true);
+        set_manual_mode(true);
+        bwapi_log("python mode on");
+        return;
+    }
+    if (type == "clear_python_mode") {
+        set_python_mode(false);
+        bwapi_log("python mode off");
+        return;
+    }
+
     if (BroodwarPtr == nullptr || Broodwar->self() == nullptr) return;
 
     if (type == "send_text") {
@@ -482,6 +496,26 @@ void MsgBusBridge::apply_action_object(const std::string& type,
                 bwapi_log("failed to set opening " + it->second);
             }
         }
+        return;
+    }
+
+    // 자연 앞마당 위치 쿼리 (BWEM 사용)
+    if (type == "get_natural_expansion") {
+        TilePosition home = Broodwar->self()->getStartLocation();
+        TilePosition best = TilePositions::Invalid;
+        int best_dist = INT_MAX;
+        for (const BWEM::Area& area : BWEM::Map::Instance().Areas()) {
+            for (const BWEM::Base& base : area.Bases()) {
+                TilePosition bt = base.Location();
+                if (bt == home) continue;
+                int d = home.getApproxDistance(bt);
+                if (d < best_dist) { best_dist = d; best = bt; }
+            }
+        }
+        send_raw_event("natural_expansion_result",
+            "{\"tile_x\":" + std::to_string(best.isValid() ? best.x : -1) +
+            ",\"tile_y\":" + std::to_string(best.isValid() ? best.y : -1) +
+            ",\"ok\":" + (best.isValid() ? "true" : "false") + "}");
         return;
     }
 
@@ -589,6 +623,21 @@ void MsgBusBridge::apply_action_object(const std::string& type,
                     ",\"tile_x\":" + std::to_string(ok ? result.x : -1) +
                     ",\"tile_y\":" + std::to_string(ok ? result.y : -1) +
                     ",\"ok\":" + (ok ? "true" : "false") + "}");
+            }
+        }
+        return;
+    }
+
+    // 저그 유닛 변이 (Hydra→Lurker, Creep Colony→Sunken, Hatchery→Lair 등)
+    if (type == "morph_unit") {
+        auto type_it = sf.find("unit_type");
+        if (type_it != sf.end()) {
+            UnitType ut = unit_type_by_name(type_it->second);
+            if (ut != UnitTypes::Unknown) {
+                unit->morph(ut);
+                bwapi_log("morph: " + type_it->second);
+            } else {
+                bwapi_log("morph: unknown type " + type_it->second);
             }
         }
         return;

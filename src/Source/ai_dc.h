@@ -138,6 +138,8 @@ bool force_strategy_opening(const std::string& opening);
 // Workers do nothing until an explicit command is issued via the web bridge.
 void set_manual_mode(bool manual);
 bool is_manual_mode();
+void set_python_mode(bool python_mode);
+bool is_python_mode();
 void gather_workers_minerals();
 void scout_with_worker();
 void block_entrance_with_workers();
