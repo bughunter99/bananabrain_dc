@@ -16,4 +16,9 @@ urlpatterns = [
     path("scripts/", views.scripts_page, name="scripts-page"),
     path("api/scripts/<str:script_id>/", views.script_detail, name="script-detail"),
     path("api/scripts/<str:script_id>/run/", views.script_run, name="script-run"),
+    # Launcher
+    path("api/launcher/status/", views.launcher_status, name="launcher-status"),
+    path("api/launcher/start/", views.launcher_start, name="launcher-start"),
+    path("api/launcher/stop/", views.launcher_stop, name="launcher-stop"),
+    path("api/launcher/inject/", views.launcher_inject, name="launcher-inject"),
 ]

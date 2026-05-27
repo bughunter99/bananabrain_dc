@@ -45,6 +45,9 @@ class ScriptContext:
             self._event_sub_id = None
             self._event_queue = None
 
+    def _send_script_action(self, action):
+        self._service.send_action(action, origin="script")
+
     # ------------------------------------------------------------------
     # Game state
     # ------------------------------------------------------------------
@@ -116,20 +119,24 @@ class ScriptContext:
     # Build location / natural expansion (sync request-response)
     # ------------------------------------------------------------------
 
-    def find_build_location_sync(self, worker_id, building_type):
+    def find_build_location_sync(self, worker_id, building_type, near_tile_x=None, near_tile_y=None):
         """Ask DLL for a build location. Returns (tile_x, tile_y) or None."""
         state = self.get_state()
+        if near_tile_x is None:
+            near_tile_x = state.get("start_tile_x", 64)
+        if near_tile_y is None:
+            near_tile_y = state.get("start_tile_y", 40)
         action = {
             "type": "find_build_location",
             "unit_id": worker_id,
             "building_type": building_type,
-            "near_tile_x": state.get("start_tile_x", 64),
-            "near_tile_y": state.get("start_tile_y", 40),
+            "near_tile_x": int(near_tile_x),
+            "near_tile_y": int(near_tile_y),
         }
         # Subscribe a fresh queue to avoid stale events
         sub_id, eq = self._service.subscribe()
         try:
-            self._service.send_action(action)
+            self._send_script_action(action)
             deadline = time.time() + 4.0
             while time.time() < deadline:
                 if self._stopped:
@@ -152,7 +159,7 @@ class ScriptContext:
         """Ask DLL for the nearest expansion tile. Returns (tile_x, tile_y) or None."""
         sub_id, eq = self._service.subscribe()
         try:
-            self._service.send_action({"type": "get_natural_expansion"})
+            self._send_script_action({"type": "get_natural_expansion"})
             deadline = time.time() + 4.0
             while time.time() < deadline:
                 if self._stopped:
@@ -177,7 +184,7 @@ class ScriptContext:
 
     def build(self, worker_id, building_type, tile_x, tile_y):
         """Send worker to build a building at the given tile."""
-        self._service.send_action({
+        self._send_script_action({
             "type": "build",
             "unit_id": worker_id,
             "building_type": building_type,
@@ -187,7 +194,7 @@ class ScriptContext:
 
     def train(self, building_id, unit_type):
         """Train a unit from a building."""
-        self._service.send_action({
+        self._send_script_action({
             "type": "train_unit",
             "unit_id": building_id,
             "unit_type": unit_type,
@@ -195,27 +202,52 @@ class ScriptContext:
 
     def morph(self, unit_id, unit_type):
         """Morph a unit (Zerg: Hydra→Lurker, Hatchery→Lair, etc.)."""
-        self._service.send_action({
+        self._send_script_action({
             "type": "morph_unit",
             "unit_id": unit_id,
             "unit_type": unit_type,
         })
 
     def attack_move(self, unit_id, x, y):
-        self._service.send_action({"type": "unit_attack_move", "unit_id": unit_id, "x": x, "y": y})
+        self._send_script_action({"type": "unit_attack_move", "unit_id": unit_id, "x": x, "y": y})
 
     def move(self, unit_id, x, y):
-        self._service.send_action({"type": "unit_move", "unit_id": unit_id, "x": x, "y": y})
+        self._send_script_action({"type": "unit_move", "unit_id": unit_id, "x": x, "y": y})
 
     def gather(self, unit_id, target_id):
-        self._service.send_action({"type": "gather_unit", "unit_id": unit_id, "target_id": target_id})
+        self._send_script_action({"type": "gather_unit", "unit_id": unit_id, "target_id": target_id})
 
-    def gather_idle_workers(self):
-        """Send all idle workers to gather minerals."""
-        self._service.send_action({"type": "gather_minerals"})
+    def user_locked_unit_ids(self):
+        state = self.get_state()
+        overrides = state.get("user_unit_overrides") or {}
+        now = time.time()
+        locked = set()
+        for k, until in overrides.items():
+            try:
+                unit_id = int(k)
+                expires = float(until)
+            except (TypeError, ValueError):
+                continue
+            if expires > now:
+                locked.add(unit_id)
+        return locked
+
+    def gather_idle_workers(self, interval=3.0):
+        """Send all idle workers to gather minerals (throttled: at most once per `interval` seconds)."""
+        idle = self.idle_workers()
+        if not idle:
+            return
+        locked = self.user_locked_unit_ids()
+        if locked and any(int(w.get("id", -1)) in locked for w in idle):
+            return
+        now = time.monotonic()
+        if now - getattr(self, "_last_gather", 0.0) < interval:
+            return
+        self._last_gather = now
+        self._send_script_action({"type": "gather_minerals"})
 
     def set_rally(self, building_id, x, y):
-        self._service.send_action({"type": "set_rally_point", "unit_id": building_id, "x": x, "y": y})
+        self._send_script_action({"type": "set_rally_point", "unit_id": building_id, "x": x, "y": y})
 
     # ------------------------------------------------------------------
     # Legacy API (kept for backward compatibility)
@@ -223,18 +255,18 @@ class ScriptContext:
 
     def set_opening(self, opening):
         """Tell the C++ bot to switch to the given opening (legacy)."""
-        self._service.send_action({"type": "set_opening", "opening": opening})
+        self._send_script_action({"type": "set_opening", "opening": opening})
         self.log("set_opening: {}".format(opening))
 
     def control(self, action_type, **kwargs):
         """Send a raw control action."""
         action = {"type": action_type}
         action.update(kwargs)
-        self._service.send_action(action)
+        self._send_script_action(action)
         self.log("control: {}".format(action_type))
 
     def send_text(self, text):
-        self._service.send_action({"type": "send_text", "text": str(text)})
+        self._send_script_action({"type": "send_text", "text": str(text)})
 
     def wait(self, seconds):
         """Sleep for the given number of seconds (interruptible)."""
@@ -298,14 +330,21 @@ def run_script(script_id, bridge_service):
     if not os.path.isfile(path):
         raise FileNotFoundError("script not found: {}".format(script_id))
 
-    # Stop any previously running script for this id
+    # Stop any previously running script for this id and wait for it to exit.
+    # This prevents the old thread's finally-block "clear_python_mode" from
+    # overriding the new thread's "set_python_mode" (race condition).
+    prev = None
     with _running_lock:
         prev = _running.get(script_id)
         if prev and prev.is_alive():
-            # signal stop via context stored as thread attribute
             ctx = getattr(prev, "_ctx", None)
             if ctx:
                 ctx.stop()
+    if prev and prev.is_alive():
+        prev.join(timeout=2.0)  # wait for clear_python_mode to be sent first
+
+    # Clear any cached _helpers module so the latest file on disk is used
+    sys.modules.pop("_helpers", None)
 
     spec = importlib.util.spec_from_file_location("strategy_script_" + script_id, path)
     mod = importlib.util.module_from_spec(spec)
@@ -316,7 +355,8 @@ def run_script(script_id, bridge_service):
     def _run():
         try:
             # Python이 게임을 완전히 제어 (manual_mode=true + python_mode=true)
-            bridge_service.send_action({"type": "set_python_mode"})
+            bridge_service.send_action({"type": "set_python_mode"}, origin="script")
+            bridge_service.emit_local_event("script_status", {"script_id": script_id, "status": "started"})
             ctx.log("스크립트 시작 (Python 제어 모드)")
             mod.run(ctx)
             ctx.log("스크립트 완료")
@@ -327,7 +367,11 @@ def run_script(script_id, bridge_service):
             ctx.log("스크립트 오류: {}  /  {}".format(exc, traceback.format_exc().replace('\n', ' | ')))
         finally:
             try:
-                bridge_service.send_action({"type": "clear_python_mode"})
+                bridge_service.send_action({"type": "clear_python_mode"}, origin="script")
+            except Exception:
+                pass
+            try:
+                bridge_service.emit_local_event("script_status", {"script_id": script_id, "status": "stopped"})
             except Exception:
                 pass
             ctx._cleanup()

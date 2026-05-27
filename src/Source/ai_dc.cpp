@@ -72,6 +72,29 @@ namespace {
 		return std::to_string(position.x) + "," + std::to_string(position.y);
 	}
 
+	bool is_visible_combat_unit(Unit unit)
+	{
+		if (unit == nullptr || !unit->exists()) return false;
+		if (unit->getType().isWorker() || unit->getType().isBuilding()) return false;
+		if (unit->isConstructing()) return false;
+		return true;
+	}
+
+	std::string summarize_top_unit_counts(const std::map<std::string, int>& counts, size_t limit = 3)
+	{
+		std::vector<std::pair<std::string, int>> items(counts.begin(), counts.end());
+		std::sort(items.begin(), items.end(), [](const auto& left, const auto& right) {
+			if (left.second != right.second) return left.second > right.second;
+			return left.first < right.first;
+		});
+		std::string summary;
+		for (size_t i = 0; i < items.size() && i < limit; ++i) {
+			if (i) summary += ", ";
+			summary += items[i].first + " " + std::to_string(items[i].second);
+		}
+		return summary;
+	}
+
 	void append_arg(std::vector<std::pair<std::string,std::string>>& args,
 					const std::string& key,
 					const std::string& value)
@@ -186,6 +209,143 @@ void ai_dc::log_unit_event(const std::string& event_name,
 	log_event(event_name, args, current_action_for(unit));
 }
 
+void ai_dc::emit_battle_judgement()
+{
+	if (BroodwarPtr == nullptr || Broodwar->self() == nullptr || strategy_ == nullptr) return;
+
+	int own_army = 0;
+	int enemy_army = 0;
+	int enemy_near_home = 0;
+	int own_workers = 0;
+	int own_bases = 0;
+	int own_completed_tech = 0;
+	int enemy_air = 0;
+	std::map<std::string, int> own_composition;
+	std::map<std::string, int> enemy_composition;
+	Position home_position = Position(Broodwar->self()->getStartLocation());
+	for (auto unit : Broodwar->self()->getUnits()) {
+		if (is_visible_combat_unit(unit)) {
+			own_army++;
+			own_composition[unit->getType().getName()]++;
+		}
+		if (unit != nullptr && unit->exists() && unit->getType().isWorker()) own_workers++;
+		if (unit != nullptr && unit->exists() && unit->getType().isResourceDepot() && unit->isCompleted()) own_bases++;
+		if (unit != nullptr && unit->exists() && unit->isCompleted() && !unit->getType().isWorker() && !unit->getType().isBuilding()) {
+			own_completed_tech++;
+		}
+	}
+	for (auto& enemy_player : Broodwar->enemies()) {
+		for (auto enemy_unit : enemy_player->getUnits()) {
+			if (!is_visible_combat_unit(enemy_unit) || !enemy_unit->isVisible()) continue;
+			enemy_army++;
+			enemy_composition[enemy_unit->getType().getName()]++;
+			if (enemy_unit->getType().isFlyer()) enemy_air++;
+			if (home_position.isValid() && enemy_unit->getDistance(home_position) <= 384) {
+				enemy_near_home++;
+			}
+		}
+	}
+
+	std::string judgement;
+	std::string level = "info";
+	std::vector<std::string> tags;
+	auto add_tag = [&](const std::string& tag) {
+		if (std::find(tags.begin(), tags.end(), tag) == tags.end()) tags.push_back(tag);
+	};
+	if (enemy_army == 0) {
+		judgement = "적이 가시 범위에 없어서 정찰/확인이 우선";
+		add_tag("scout_needed");
+	} else if (enemy_near_home > 0 && own_army + 2 < enemy_army) {
+		judgement = "적이 본진 근처에 접근했고 병력도 밀려서 후퇴/수비 필요";
+		level = "warn";
+		add_tag("enemy_pressure");
+		add_tag("retreat_needed");
+		add_tag("home_threat");
+		add_tag("rush_alert");
+	} else if (enemy_army > own_army + 2) {
+		judgement = "적 병력이 더 많아서 방어 비중을 높여야 함";
+		level = "warn";
+		add_tag("army_deficit");
+		add_tag("defend_more");
+		add_tag("fallback_defense");
+	} else if (own_army >= enemy_army + 3) {
+		judgement = "병력 우위라 공격 전환이 가능함";
+		level = "ok";
+		add_tag("attack_window");
+		add_tag("army_advantage");
+		add_tag("counter_attack_window");
+	} else if (enemy_near_home > 0) {
+		judgement = "적 병력이 본진 근처에 보여 경계가 필요";
+		level = "warn";
+		add_tag("enemy_pressure");
+		add_tag("home_threat");
+		add_tag("vision_check");
+	} else {
+		judgement = "병력 균형 상태라 자원/테크 진행을 유지";
+		add_tag("macro_continue");
+	}
+	if (own_workers < 8) add_tag("worker_shortage");
+	else if (own_workers < 12) add_tag("eco_greedy_ok");
+	if (own_workers >= 14 && own_bases == 1 && enemy_army == 0) add_tag("expand_window");
+	if (own_bases >= 2 && enemy_near_home == 0 && enemy_army > 0) add_tag("expand_safe");
+	if (own_completed_tech < enemy_air && enemy_air > 0) add_tag("air_threat");
+	if (own_completed_tech > enemy_army + 4) add_tag("tech_lead");
+	if (own_completed_tech + 2 < enemy_army) add_tag("tech_deficit");
+	if (Broodwar->self()->minerals() < 150) add_tag("low_minerals");
+	if (Broodwar->self()->gas() < 100) add_tag("low_gas");
+	if (Broodwar->self()->supplyUsed() + 4 >= Broodwar->self()->supplyTotal()) add_tag("supply_block_risk");
+	if (Broodwar->self()->minerals() >= 400 && own_workers < 24) add_tag("worker_production_prioritized");
+	if (Broodwar->self()->minerals() >= 400 && own_bases == 1 && enemy_near_home == 0) add_tag("expand_affordable");
+	if (enemy_near_home > 0 && own_army == 0) add_tag("base_defenseless");
+	if (enemy_air > 0 && own_completed_tech == 0) add_tag("no_anti_air_info");
+
+	std::string tag_text;
+	for (size_t i = 0; i < tags.size(); ++i) {
+		if (i) tag_text += ",";
+		tag_text += tags[i];
+	}
+	std::string own_summary = summarize_top_unit_counts(own_composition);
+	std::string enemy_summary = summarize_top_unit_counts(enemy_composition);
+
+	std::string signature = level + "|" + judgement + "|" + tag_text + "|" + own_summary + "|" + enemy_summary + "|" + std::to_string(own_army) + "|" + std::to_string(enemy_army) + "|" + std::to_string(enemy_near_home);
+	if (signature == last_battle_judgement_) return;
+	last_battle_judgement_ = signature;
+
+	log_event("BattleJudgement", {
+		arg("frame", std::to_string(Broodwar->getFrameCount())),
+		arg("level", level),
+		arg("message", judgement),
+		arg("tags", tag_text),
+		arg("own_summary", own_summary),
+		arg("enemy_summary", enemy_summary),
+		arg("own_army", std::to_string(own_army)),
+		arg("enemy_army", std::to_string(enemy_army)),
+		arg("enemy_near_home", std::to_string(enemy_near_home)),
+		arg("own_workers", std::to_string(own_workers)),
+		arg("own_bases", std::to_string(own_bases)),
+		arg("own_tech", std::to_string(own_completed_tech)),
+		arg("enemy_air", std::to_string(enemy_air)),
+		arg("mode", strategy_->mode()),
+		arg("opening", strategy_->opening())
+	}, "none");
+	python_bridge.send_event("battle_judgement", {
+		{"level", level},
+		{"message", judgement},
+		{"tags", tag_text},
+		{"own_summary", own_summary},
+		{"enemy_summary", enemy_summary},
+		{"own_army", std::to_string(own_army)},
+		{"enemy_army", std::to_string(enemy_army)},
+		{"enemy_near_home", std::to_string(enemy_near_home)},
+		{"own_workers", std::to_string(own_workers)},
+		{"own_bases", std::to_string(own_bases)},
+		{"own_tech", std::to_string(own_completed_tech)},
+		{"enemy_air", std::to_string(enemy_air)},
+		{"mode", strategy_->mode()},
+		{"opening", strategy_->opening()}
+	});
+}
+
 void ai_dc::log_recent_unit_commands()
 {
 	if (Broodwar->self() == nullptr) return;
@@ -290,14 +450,29 @@ void ai_dc::onStart()
 		std::string stx = std::to_string(start_tile.isValid() ? start_tile.x : -1);
 		std::string sty = std::to_string(start_tile.isValid() ? start_tile.y : -1);
 
+		// Enemy candidate start locations (for Python scouting/attack targeting)
+		std::string enemy_starts_json = "[";
+		first = true;
+		for (const TilePosition& loc : Broodwar->getStartLocations()) {
+			if (start_tile.isValid() && loc == start_tile) continue;
+			if (!first) enemy_starts_json += ",";
+			first = false;
+			enemy_starts_json += "{\"tile_x\":" + std::to_string(loc.x) +
+			                    ",\"tile_y\":" + std::to_string(loc.y) + "}";
+		}
+		enemy_starts_json += "]";
+
 		std::string self_race = Broodwar->self() ? Broodwar->self()->getRace().getName() : "Unknown";
 		int enemy_count = (int)Broodwar->enemies().size();
 
 		std::string payload = "{\"self_race\":\"" + esc(self_race) + "\"" +
 		                      ",\"enemy_count\":" + std::to_string(enemy_count) +
 		                      ",\"is_replay\":" + (Broodwar->isReplay() ? "true" : "false") +
+		                      ",\"map_width_tiles\":" + std::to_string(Broodwar->mapWidth()) +
+		                      ",\"map_height_tiles\":" + std::to_string(Broodwar->mapHeight()) +
 		                      ",\"start_tile_x\":" + stx +
 		                      ",\"start_tile_y\":" + sty +
+		                      ",\"enemy_start_locations\":" + enemy_starts_json +
 		                      ",\"mineral_fields\":" + minerals_json +
 		                      ",\"geysers\":" + geysers_json +
 		                      ",\"units\":" + start_units_json + "}";
@@ -472,6 +647,9 @@ void gather_workers_minerals()
 	if (BroodwarPtr == nullptr || Broodwar->self() == nullptr) return;
 	for (Unit u : Broodwar->self()->getUnits()) {
 		if (!u->exists() || !u->getType().isWorker()) continue;
+		// Skip workers that are already busy: constructing, moving to build,
+		// carrying resources back, or already gathering — only redirect truly idle ones.
+		if (!u->isIdle()) continue;
 		// Find nearest mineral with resources remaining
 		Unit best = nullptr;
 		int best_dist = INT_MAX;
@@ -626,10 +804,12 @@ void ai_dc::onFrame()
 	PerformanceTimer performance_timer;
 	
 	before();
-	if (!g_manual_mode) {
+	// Python command-only mode: never run C++ autonomous strategy while python mode is active.
+	if (!g_manual_mode && !g_python_mode) {
 		strategy_->frame();
 		after();
 		surrender_if_hope_lost();
+		emit_battle_judgement();
 	}
 	log_recent_unit_commands();
 	

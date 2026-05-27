@@ -1,29 +1,87 @@
-"""TvU Mechanic: Factory x2->Armory->Tanks+Vultures+Goliaths"""
+"""TvU Mechanic (supply milestone 기반)
+
+빌드 오더:
+  supply 8  → Supply Depot ×1
+  supply 9  → Barracks ×1
+  supply 11 → Refinery ×1
+  supply 13 → Refinery ×2
+  supply 14 → Factory ×1
+  supply 17 → Machine Shop ×1, Factory ×2
+  supply 21 → Machine Shop ×2, Armory ×1
+  Tanks + Goliaths + Vultures → 코어 공격
+"""
 import sys, os; sys.path.insert(0, os.path.dirname(__file__))
 from _helpers import StrategyHelper
+
+CPP_OPENING = "TvU_mechanic"
+
 
 def run(ctx):
     h = StrategyHelper(ctx)
     if not h.setup():
         return
-    ctx.log("TvU Mechanic 시작")
+    ctx.log("TvU Mechanic 시작 (supply milestone)")
+    h.start_trace("TvU_Mechanic", interval=1.5)
+
     while not ctx._stopped:
-        h.manage_supply(threshold=2)
+        s = h.supply_count()
+        h.trace(
+            "Opening",
+            depots=h.count_including_unfinished("Terran Supply Depot"),
+            rax=h.count_including_unfinished("Terran Barracks"),
+            factory=h.count_including_unfinished("Terran Factory"),
+            tanks=h.count_including_unfinished("Terran Siege Tank Tank Mode"),
+            goliath=h.count_including_unfinished("Terran Goliath"),
+        )
+
+        if h.enemy_offense_larger_than_defense(cushion=1) or h.opening_lost_too_many_workers(margin=3):
+            h.mark_once("fallback_main", "Mechanic 위기 감지 → C++ Main으로 즉시 전환")
+            h.delegate_to_cpp(CPP_OPENING)
+            return
+
         h.manage_workers(desired=18)
-        h.try_build("Terran Supply Depot", 100, max_count=99, cooldown=12.0)
-        h.try_build("Terran Barracks", 150, max_count=1)
-        h.try_build("Terran Refinery", 100, max_count=2)
-        if h.has("Terran Barracks"):
-            h.try_build("Terran Factory", 200, max_count=2, gas_cost=100)
-        if h.has("Terran Factory"):
-            h.try_build("Terran Machine Shop", 50, max_count=2, gas_cost=25)
-            h.try_build("Terran Armory", 100, max_count=1, gas_cost=50)
+        h.manage_supply(threshold=2)
+
+        if s >= 8:
+            h.try_build_at_most("Terran Supply Depot", 100, 1)
+
+        if s >= 9 and h.has_including_unfinished("Terran Supply Depot"):
+            h.try_build_at_most("Terran Barracks", 150, 1)
+
+        if s >= 11:
+            h.try_build_at_most("Terran Refinery", 100, 1)
+
+        if s >= 13:
+            h.try_build_at_most("Terran Refinery", 100, 2)
+
+        if s >= 14 and h.has("Terran Barracks"):
+            h.try_build_at_most("Terran Factory", 200, 1, gas_cost=100)
+
+        if s >= 17 and h.has("Terran Factory"):
+            h.try_build_at_most("Terran Machine Shop", 50, 1, gas_cost=25)
+            h.try_build_at_most("Terran Factory", 200, 2, gas_cost=100)
+
+        if s >= 21:
+            h.try_build_at_most("Terran Machine Shop", 50, 2, gas_cost=25)
+            h.try_build_at_most("Terran Armory", 100, 1, gas_cost=50)
+
+        # 유닛 생산
         h.try_train("Terran Barracks", "Terran Marine", 50, max_count=4)
         h.try_train("Terran Factory", "Terran Siege Tank Tank Mode", 150, gas_cost=100)
+        h.try_train("Terran Factory", "Terran Vulture", 75)
         if h.has("Terran Armory"):
             h.try_train("Terran Factory", "Terran Goliath", 100, gas_cost=50)
-        h.try_train("Terran Factory", "Terran Vulture", 75)
-        h.attack_with(["Terran Marine", "Terran Siege Tank Tank Mode",
-                       "Terran Goliath", "Terran Vulture"], min_army=8)
+
+        if h.count_of("Terran Siege Tank Tank Mode") >= 2:
+            h.attack_with(["Terran Marine", "Terran Siege Tank Tank Mode",
+                           "Terran Goliath", "Terran Vulture"], min_army=6)
+
+        if (h.count_including_unfinished("Terran Factory") >= 2 and
+                h.count_of("Terran Siege Tank Tank Mode") >= 2 and
+                h.count_of("Terran Goliath") >= 2):
+            ctx.log("TvU Mechanic 오프닝 완료 → C++ 자율 플레이 전환")
+            h.delegate_to_cpp(CPP_OPENING)
+            return
+
         ctx.gather_idle_workers()
         ctx.wait(0.25)

@@ -204,8 +204,14 @@ static std::string utf8_to_ansi(const std::string& s)
 // UnitType has no built-in getUnitType(string) in BWAPI 4.x, so we iterate.
 static UnitType unit_type_by_name(const std::string& name)
 {
+    // BWAPI 4.x getName() returns underscore format (e.g. "Protoss_Pylon").
+    // Callers may pass space format ("Protoss Pylon"), so normalise both sides.
+    std::string normalised = name;
+    std::replace(normalised.begin(), normalised.end(), ' ', '_');
     for (auto& ut : UnitTypes::allUnitTypes()) {
-        if (ut.getName() == name) return ut;
+        std::string utName = ut.getName();
+        std::replace(utName.begin(), utName.end(), ' ', '_');
+        if (utName == normalised) return ut;
     }
     return UnitTypes::Unknown;
 }
@@ -430,6 +436,8 @@ void MsgBusBridge::apply_action_object(const std::string& type,
     }
     if (type == "clear_python_mode") {
         set_python_mode(false);
+        // Keep manual mode on so C++ autonomous loop does not resume unexpectedly.
+        set_manual_mode(true);
         bwapi_log("python mode off");
         return;
     }
@@ -453,7 +461,6 @@ void MsgBusBridge::apply_action_object(const std::string& type,
     if (type == "gather_minerals") {
         set_manual_mode(true);  // ensure AI does not override worker orders
         gather_workers_minerals();
-        bwapi_log("gather_minerals command applied");
         return;
     }
 
@@ -472,6 +479,10 @@ void MsgBusBridge::apply_action_object(const std::string& type,
     }
 
     if (type == "set_auto_play") {
+        if (is_python_mode()) {
+            bwapi_log("set_auto_play ignored in python mode");
+            return;
+        }
         set_manual_mode(false);
         Broodwar->sendText("%s", utf8_to_ansi("[ai_dc] 자율 플레이 시작").c_str());
         bwapi_log("auto play enabled");
@@ -519,10 +530,37 @@ void MsgBusBridge::apply_action_object(const std::string& type,
         return;
     }
 
+    // 건설 위치 쿼리 (unit_id 불필요 - unit 변수 미사용)
+    if (type == "find_build_location") {
+        auto btype_it = sf.find("building_type");
+        if (btype_it != sf.end()) {
+            UnitType bt = unit_type_by_name(btype_it->second);
+            if (bt != UnitTypes::Unknown) {
+                auto nx_it = nf.find("near_tile_x"), ny_it = nf.find("near_tile_y");
+                TilePosition near_pos = (nx_it != nf.end() && ny_it != nf.end())
+                    ? TilePosition(nx_it->second, ny_it->second)
+                    : Broodwar->self()->getStartLocation();
+                TilePosition result = Broodwar->getBuildLocation(bt, near_pos, 40, false);
+                bool ok = result.isValid();
+                send_raw_event("build_location_result",
+                    "{\"building_type\":\"" + escape_json(btype_it->second) + "\"" +
+                    ",\"tile_x\":" + std::to_string(ok ? result.x : -1) +
+                    ",\"tile_y\":" + std::to_string(ok ? result.y : -1) +
+                    ",\"ok\":" + (ok ? "true" : "false") + "}");
+            } else {
+                bwapi_log("find_build_location: unknown type " + btype_it->second);
+            }
+        }
+        return;
+    }
+
     auto uid_it = nf.find("unit_id");
     if (uid_it == nf.end()) return;
     Unit unit = Broodwar->getUnit(uid_it->second);
-    if (unit == nullptr || !unit->exists() || unit->getPlayer() != Broodwar->self()) return;
+    if (unit == nullptr || !unit->exists() || unit->getPlayer() != Broodwar->self()) {
+        bwapi_log("unit check failed: type=" + type + " unit_id=" + std::to_string(uid_it->second));
+        return;
+    }
 
     if (type == "unit_stop") {
         unit->stop();
@@ -607,26 +645,6 @@ void MsgBusBridge::apply_action_object(const std::string& type,
         return;
     }
 
-    if (type == "find_build_location") {
-        auto btype_it = sf.find("building_type");
-        if (btype_it != sf.end()) {
-            UnitType bt = unit_type_by_name(btype_it->second);
-            if (bt != UnitTypes::Unknown) {
-                auto nx_it = nf.find("near_tile_x"), ny_it = nf.find("near_tile_y");
-                TilePosition near_pos = (nx_it != nf.end() && ny_it != nf.end())
-                    ? TilePosition(nx_it->second, ny_it->second)
-                    : Broodwar->self()->getStartLocation();
-                TilePosition result = Broodwar->getBuildLocation(bt, near_pos, 40, false);
-                bool ok = result.isValid();
-                send_raw_event("build_location_result",
-                    "{\"building_type\":\"" + escape_json(btype_it->second) + "\"" +
-                    ",\"tile_x\":" + std::to_string(ok ? result.x : -1) +
-                    ",\"tile_y\":" + std::to_string(ok ? result.y : -1) +
-                    ",\"ok\":" + (ok ? "true" : "false") + "}");
-            }
-        }
-        return;
-    }
 
     // 저그 유닛 변이 (Hydra→Lurker, Creep Colony→Sunken, Hatchery→Lair 등)
     if (type == "morph_unit") {

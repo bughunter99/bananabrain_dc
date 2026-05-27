@@ -12,6 +12,7 @@ from django.views.decorators.http import require_GET, require_POST
 
 from .bridge import get_bridge_service, REPRESENTATIVE_STRATEGIES
 from . import script_runner
+from . import launcher as _launcher
 
 
 def _json_body(request):
@@ -207,3 +208,41 @@ def script_run(request, script_id):
     except Exception as exc:
         return JsonResponse({"ok": False, "error": str(exc)}, status=500)
     return JsonResponse({"ok": True, "script_id": script_id})
+
+
+# ---------------------------------------------------------------------------
+# Launcher views
+# ---------------------------------------------------------------------------
+
+@require_GET
+def launcher_status(request):
+    return JsonResponse(_launcher.status())
+
+
+@csrf_exempt
+@require_POST
+def launcher_start(request):
+    body = _json_body(request)
+    debug = bool(body.get("debug", False))
+    result = _launcher.launch_and_inject(debug=debug)
+    status_code = 200 if result.get("ok") else 409
+    return JsonResponse(result, status=status_code)
+
+
+@csrf_exempt
+@require_POST
+def launcher_stop(request):
+    result = _launcher.kill_starcraft()
+    status_code = 200 if result.get("ok") else 409
+    return JsonResponse(result, status=status_code)
+
+
+@csrf_exempt
+@require_POST
+def launcher_inject(request):
+    """이미 실행 중인 StarCraft 에 DLL 만 인젝션 (카오스 런처 연동용)."""
+    body = _json_body(request)
+    debug = bool(body.get("debug", False))
+    result = _launcher.inject_into_running(debug=debug)
+    status_code = 200 if result.get("ok") else 409
+    return JsonResponse(result, status=status_code)

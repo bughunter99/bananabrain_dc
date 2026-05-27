@@ -116,6 +116,7 @@ private:
 	void log_unit_event(const std::string& event_name,
 						Unit unit,
 						const std::vector<std::pair<std::string,std::string>>& extra_args = {});
+	void emit_battle_judgement();
 	void log_recent_unit_commands();
 	std::vector<std::pair<std::string,std::string>> base_unit_args(Unit unit) const;
 	std::string current_action_for(Unit unit) const;
@@ -129,6 +130,7 @@ private:
 	std::string log_path_;
 	std::ofstream log_stream_;
 	std::map<int,CommandSnapshot> last_unit_commands_;
+	std::string last_battle_judgement_;
 	std::unique_ptr<Strategy> strategy_;
 };
 

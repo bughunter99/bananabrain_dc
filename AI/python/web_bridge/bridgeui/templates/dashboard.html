@@ -147,11 +147,24 @@
             border-color: transparent;
             font-weight: 600;
         }
-        .btn.warn {
-            background: rgba(245,158,11,0.18);
-            color: var(--warn);
-            border-color: rgba(245,158,11,0.28);
+        .btn.danger {
+            background: rgba(239,68,68,0.18);
+            color: var(--danger);
+            border-color: rgba(239,68,68,0.35);
         }
+        #launcher-phase {
+            display: inline-block;
+            font-size: 9px;
+            padding: 1px 6px;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.05);
+            color: var(--muted);
+            margin-bottom: 4px;
+        }
+        #launcher-phase.running { background: rgba(34,197,94,0.15); color: var(--ok); }
+        #launcher-phase.launching,
+        #launcher-phase.injecting { background: rgba(245,158,11,0.15); color: var(--warn); }
+        #launcher-phase.error { background: rgba(239,68,68,0.15); color: var(--danger); }
         .btn.ghost {
             background: transparent;
             color: var(--muted);
@@ -306,21 +319,7 @@
             flex: 1;
         }
         .editor-header .editor-actions { display: flex; gap: 4px; flex-shrink: 0; }
-        #editor-code {
-            flex: 1;
-            width: 100%;
-            background: #12141a;
-            color: #c8cdd8;
-            border: none;
-            border-radius: 0;
-            font-family: Consolas, "Courier New", monospace;
-            font-size: 11px;
-            line-height: 1.6;
-            padding: 8px 10px;
-            resize: none;
-            outline: none;
-            tab-size: 4;
-        }
+        #editor-code { display: none; }
         #editor-status {
             flex-shrink: 0;
             font-size: 9px;
@@ -332,7 +331,45 @@
         }
         #editor-status.ok { color: var(--ok); }
         #editor-status.err { color: var(--danger); }
+        /* ── CodeMirror overrides ─────────────────── */
+        #editor-wrap {
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .CodeMirror {
+            height: 100%;
+            background: #12141a;
+            color: #abb2bf;
+            font-family: Consolas, "Courier New", monospace;
+            font-size: 11px;
+            line-height: 1.6;
+            border: none;
+        }
+        .CodeMirror-scroll { box-sizing: border-box; }
+        .CodeMirror-gutters { background: #12141a; border-right: 1px solid rgba(255,255,255,0.05); }
+        .CodeMirror-linenumber { color: #3e4451; }
+        .CodeMirror-cursor { border-left-color: #528bff; }
+        .CodeMirror-selected { background: rgba(59,130,246,0.25) !important; }
+        /* token colors — one-dark style */
+        .cm-keyword   { color: #c678dd; }
+        .cm-def       { color: #61afef; }
+        .cm-variable  { color: #abb2bf; }
+        .cm-variable-2{ color: #e06c75; }
+        .cm-string    { color: #98c379; }
+        .cm-string-2  { color: #98c379; }
+        .cm-comment   { color: #5c6370; font-style: italic; }
+        .cm-number    { color: #d19a66; }
+        .cm-operator  { color: #56b6c2; }
+        .cm-builtin   { color: #e5c07b; }
+        .cm-atom      { color: #d19a66; }
+        .cm-meta      { color: #abb2bf; }
     </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/codemirror.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.17/mode/python/python.min.js"></script>
 </head>
 <body>
 <script>
@@ -361,6 +398,17 @@ window.initialBridgeData = {{ initial_data|safe }};
 <div class="layout">
 
     <div class="left">
+
+        <div class="sec">
+            <div class="sec-label">게임 실행</div>
+            <div id="launcher-phase">확인 중…</div>
+            <div class="row" style="margin-bottom:3px;">
+                <button class="btn primary" type="button" id="btn-sc-start" style="margin-bottom:0;">▶ 게임 시작</button>
+                <button class="btn" type="button" id="btn-sc-start-debug" style="margin-bottom:0;font-size:9px;color:var(--muted);">D</button>
+            </div>
+            <button class="btn warn" type="button" id="btn-sc-inject" title="카오스 런처 등으로 게임을 직접 띄운 후 DLL만 주입">💉 DLL 인젝션만</button>
+            <button class="btn danger" type="button" id="btn-sc-stop">■ 게임 종료</button>
+        </div>
 
         <div class="sec">
             <div class="sec-label">게임 제어</div>
@@ -401,6 +449,7 @@ window.initialBridgeData = {{ initial_data|safe }};
 
         <div class="sec">
             <div class="sec-label">전략 <span id="strategy-race" style="color:var(--accent)"></span></div>
+            <div id="current-strategy" style="font-size:11px;color:var(--muted);margin:0 0 6px 0;">현재 실행 전략: -</div>
             <div id="strategy-grid"><div style="color:var(--muted);font-size:10px;">게임 연결 대기중</div></div>
         </div>
 
@@ -428,7 +477,7 @@ window.initialBridgeData = {{ initial_data|safe }};
                     <button class="btn-xs" id="editor-run" disabled>▶ 실행</button>
                 </div>
             </div>
-            <textarea id="editor-code" placeholder="전략을 선택하면 스크립트가 여기 표시됩니다."></textarea>
+            <div id="editor-wrap"><textarea id="editor-code" placeholder="전략을 선택하면 스크립트가 여기 표시됩니다."></textarea></div>
             <div id="editor-status"></div>
         </div>
     </div>
@@ -458,6 +507,30 @@ function formatPayloadShort(payload) {
         const vs = typeof v === 'object' ? JSON.stringify(v) : String(v);
         return k + ':' + (vs.length > 20 ? vs.slice(0, 20) + '\u2026' : vs);
     }).join('  ');
+}
+
+function openingToScriptId(opening) {
+    return String(opening || '').replace(/\//g, '-').replace(/\./g, '_');
+}
+
+function resolveStrategyLabel(s, scriptId) {
+    if (!scriptId) return '-';
+    const race = s.self_race;
+    const list = s.current_strategies || (s.available_strategies || {})[race] || [];
+    for (const item of list) {
+        if (openingToScriptId(item.opening) === scriptId) {
+            return item.label || item.opening || scriptId;
+        }
+    }
+    return scriptId;
+}
+
+function renderCurrentStrategy(s) {
+    const el = document.getElementById('current-strategy');
+    if (!el) return;
+    const sid = s.current_script_id;
+    const label = resolveStrategyLabel(s, sid);
+    el.textContent = sid ? ('현재 실행 전략: ' + label + ' (' + sid + ')') : '현재 실행 전략: -';
 }
 
 function updateHeader(s) {
@@ -492,14 +565,11 @@ function renderStrategies(s) {
         grid.innerHTML = '<div style="color:var(--muted);font-size:10px;">전략 없음</div>';
         return;
     }
-    // Map opening -> script_id (same logic as Python: replace / with - and . with _)
-    function toScriptId(opening) {
-        return opening.replace(/\//g, '-').replace(/\./g, '_');
-    }
     grid.innerHTML = strategies.map(item => {
-        const sid = toScriptId(item.opening);
+        const sid = openingToScriptId(item.opening);
         return '<div class="strat-row">' +
             '<button class="strat-btn" type="button" data-opening="' + escapeHtml(item.opening) +
+            '" data-cpp-opening="' + escapeHtml(item.cpp_opening || item.opening) +
             '" data-sid="' + escapeHtml(sid) +
             '" title="' + escapeHtml(item.summary) + '">' + escapeHtml(item.label || item.opening) + '</button>' +
             '<button class="strat-edit-link" type="button" data-sid="' + escapeHtml(sid) + '" title="스크립트 편집">✏</button>' +
@@ -508,18 +578,15 @@ function renderStrategies(s) {
     grid.querySelectorAll('.strat-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
             const sid = btn.getAttribute('data-sid');
+            const opening = btn.getAttribute('data-opening');
             const label = btn.textContent.trim();
             // Load script into editor
             loadScriptIntoEditor(sid, label);
-            // Run strategy
+            // Run selected strategy script so build-order changes in Python are applied.
             try {
-                await postJson('/api/scripts/' + encodeURIComponent(sid) + '/run/', {});
-            } catch (_) {
-                try {
-                    await postJson('/api/action/strategy/', { opening: btn.getAttribute('data-opening') });
-                } catch (err) {
-                    console.warn('strategy action failed:', err);
-                }
+                await postJson(`/api/scripts/${encodeURIComponent(sid)}/run/`, {});
+            } catch (err) {
+                console.warn('strategy run failed:', err);
             }
         });
     });
@@ -537,9 +604,29 @@ function eventCategory(e) {
     if (e.startsWith('onUnit') || e.startsWith('onPlayer')) return 'unit';
     if (['onSendText','onReceiveText'].includes(e)) return 'chat';
     if (['ui_action_sent'].includes(e)) return 'action';
-    if (e.startsWith('bridge') || ['manual_mode_changed','onStrategyChanged'].includes(e)) return 'bridge';
+    if (e.startsWith('bridge') || ['manual_mode_changed','onStrategyChanged','script_status','script_log'].includes(e)) return 'bridge';
     if (e === 'onFrame') return 'frame';
+    if (e === 'battle_judgement') return 'battle';
     return 'bridge';
+}
+
+function shouldShowEvent(event) {
+    const e = event.event || '';
+    const hidden = new Set([
+        'onFrame',
+        'onUnitCreate',
+        'onUnitComplete',
+        'onUnitDiscover',
+        'onUnitEvade',
+        'onUnitShow',
+        'onUnitHide',
+        'onUnitMorph',
+        'onUnitRenegade',
+        'ui_action_sent',
+        'script_action_sent',
+        'action_sent',
+    ]);
+    return !hidden.has(e);
 }
 
 function describeEvent(event) {
@@ -594,6 +681,20 @@ function describeEvent(event) {
         }
         case 'onStrategyChanged':
             return '🎯 전략 변경 — ' + (p.opening||'?') + (p.mode?' / 모드: '+p.mode:'');
+        case 'script_status':
+            return (p.status === 'started' ? '▶ 스크립트 시작 — ' : '■ 스크립트 종료 — ') + (p.script_id || '?');
+        case 'script_log':
+            return '📝 스크립트 로그 — ' + (p.script_id || '?') + ': ' + (p.message || '');
+        case 'battle_judgement': {
+            const label = p.level === 'warn' ? '⚠ 판단' : (p.level === 'ok' ? '✅ 판단' : 'ℹ 판단');
+            const counts = (p.own_army != null || p.enemy_army != null)
+                ? ' (내 병력 ' + (p.own_army ?? '?') + ' / 적 병력 ' + (p.enemy_army ?? '?') + ')'
+                : '';
+            const tags = p.tags ? ' [' + p.tags + ']' : '';
+            const ownSummary = p.own_summary ? ' | 내 조합: ' + p.own_summary : '';
+            const enemySummary = p.enemy_summary ? ' | 적 조합: ' + p.enemy_summary : '';
+            return label + ' — ' + (p.message || '?') + counts + tags + ownSummary + enemySummary;
+        }
         case 'ui_action_sent': {
             const a = p.action||{};
             const m = {
@@ -614,6 +715,7 @@ function describeEvent(event) {
 }
 
 function appendLog(event, prepend) {
+    if (!shouldShowEvent(event)) return;
     const log = document.getElementById('log');
     const cat = eventCategory(event.event || '');
     const line = document.createElement('div');
@@ -647,6 +749,7 @@ function renderSnapshot(snapshot) {
     const s = snapshot.state || {};
     updateHeader(s);
     renderStrategies(s);
+    renderCurrentStrategy(s);
     if (s.manual_mode != null) updateControlBadge(s.manual_mode);
     const log = document.getElementById('log');
     log.innerHTML = '';
@@ -675,12 +778,20 @@ function applyIncomingEvent(event) {
         s.manual_mode = event.payload.manual_mode === 'true' || event.payload.manual_mode === true;
         updateControlBadge(s.manual_mode);
     }
+    if (event.event === 'script_status') {
+        if (event.payload.status === 'started') {
+            s.current_script_id = event.payload.script_id;
+        } else if (event.payload.status === 'stopped' && s.current_script_id === event.payload.script_id) {
+            s.current_script_id = null;
+        }
+    }
     if (event.event === 'ui_action_sent' && event.payload.action.type === 'set_opening') { s.opening = event.payload.action.opening; }
     if (s.self_race && s.available_strategies) { s.current_strategies = s.available_strategies[s.self_race] || []; }
 
     state.snapshot.state = s;
     updateHeader(s);
     renderStrategies(s);
+    renderCurrentStrategy(s);
 }
 
 async function postJson(url, payload) {
@@ -751,25 +862,15 @@ function setupForms() {
             document.querySelectorAll('.tab-pane').forEach(p => {
                 p.classList.toggle('active', p.id === 'pane-' + target);
             });
+            if (target === 'editor') setTimeout(() => window.cmEditor?.refresh(), 10);
         });
-    });
-
-    // Tab key in editor inserts 4 spaces
-    document.getElementById('editor-code').addEventListener('keydown', (e) => {
-        if (e.key === 'Tab') {
-            e.preventDefault();
-            const ta = e.target;
-            const s = ta.selectionStart, end = ta.selectionEnd;
-            ta.value = ta.value.slice(0, s) + '    ' + ta.value.slice(end);
-            ta.selectionStart = ta.selectionEnd = s + 4;
-        }
     });
 
     // Save button
     document.getElementById('editor-save').addEventListener('click', async () => {
         const sid = document.getElementById('editor-save').getAttribute('data-sid');
         if (!sid) return;
-        const content = document.getElementById('editor-code').value;
+        const content = window.cmEditor ? window.cmEditor.getValue() : document.getElementById('editor-code').value;
         const status = document.getElementById('editor-status');
         try {
             await postJson('/api/scripts/' + encodeURIComponent(sid) + '/', { content });
@@ -786,7 +887,7 @@ function setupForms() {
     document.getElementById('editor-run').addEventListener('click', async () => {
         const sid = document.getElementById('editor-run').getAttribute('data-sid');
         if (!sid) return;
-        const content = document.getElementById('editor-code').value;
+        const content = window.cmEditor ? window.cmEditor.getValue() : document.getElementById('editor-code').value;
         const status = document.getElementById('editor-status');
         try {
             await postJson('/api/scripts/' + encodeURIComponent(sid) + '/', { content });
@@ -804,8 +905,102 @@ function setupForms() {
     document.getElementById('btn-gather').addEventListener('click', async () => { await postJson('/api/action/control/', { type: 'gather_minerals' }); });
     document.getElementById('btn-scout').addEventListener('click', async () => { await postJson('/api/action/control/', { type: 'scout' }); });
     document.getElementById('btn-block').addEventListener('click', async () => { await postJson('/api/action/control/', { type: 'block_entrance' }); });
-    document.getElementById('btn-auto').addEventListener('click', async () => { await postJson('/api/action/control/', { type: 'set_auto_play' }); });
+    document.getElementById('btn-auto').addEventListener('click', async () => { await postJson('/api/scripts/auto_play/run/', {}); });
     document.getElementById('btn-manual').addEventListener('click', async () => { await postJson('/api/action/control/', { type: 'set_manual' }); });
+}
+
+// ── Launcher ───────────────────────────────────────────────────────────────
+function updateLauncherUI(s) {
+    const phase = s.phase || 'idle';
+    const badge = document.getElementById('launcher-phase');
+    const startBtn = document.getElementById('btn-sc-start');
+    const startDebugBtn = document.getElementById('btn-sc-start-debug');
+    const injectBtn = document.getElementById('btn-sc-inject');
+    const stopBtn  = document.getElementById('btn-sc-stop');
+
+    badge.className = phase;
+    const labels = {
+        idle:      '⏹ 꺼짐',
+        launching: '⏳ 시작 중…',
+        injecting: '💉 인젝션 중…',
+        running:   '🟢 실행 중 (PID ' + (s.pid || '?') + ')',
+        error:     '❌ ' + (s.error || '오류'),
+    };
+    badge.textContent = labels[phase] || phase;
+
+    const busy = phase === 'launching' || phase === 'injecting';
+    const running = phase === 'running' && s.sc_running;
+    startBtn.disabled = busy || running;
+    startDebugBtn.disabled = busy || running;
+    injectBtn.disabled = busy || !s.sc_running;
+    stopBtn.disabled  = busy || !s.sc_running;
+}
+
+async function pollLauncherStatus() {
+    try {
+        const res = await fetch('/api/launcher/status/');
+        if (res.ok) updateLauncherUI(await res.json());
+    } catch (_) {}
+}
+
+function setupLauncher() {
+    const startBtn      = document.getElementById('btn-sc-start');
+    const startDebugBtn = document.getElementById('btn-sc-start-debug');
+    const injectBtn     = document.getElementById('btn-sc-inject');
+    const stopBtn       = document.getElementById('btn-sc-stop');
+
+    async function doStart(debug) {
+        startBtn.disabled = true;
+        startDebugBtn.disabled = true;
+        try {
+            const res = await fetch('/api/launcher/start/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ debug }),
+            });
+            const data = await res.json();
+            if (!data.ok) {
+                const badge = document.getElementById('launcher-phase');
+                badge.className = 'error';
+                badge.textContent = '❌ ' + (data.error || '실패');
+            }
+        } catch (err) {
+            console.error('launcher start error', err);
+        }
+    }
+
+    async function doInject(debug) {
+        injectBtn.disabled = true;
+        try {
+            const res = await fetch('/api/launcher/inject/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ debug }),
+            });
+            const data = await res.json();
+            if (!data.ok) {
+                const badge = document.getElementById('launcher-phase');
+                badge.className = 'error';
+                badge.textContent = '❌ ' + (data.error || '인젝션 실패');
+            }
+        } catch (err) {
+            console.error('inject error', err);
+        }
+    }
+
+    startBtn.addEventListener('click', () => doStart(false));
+    startDebugBtn.addEventListener('click', () => doStart(true));
+    injectBtn.addEventListener('click', () => doInject(false));
+
+    stopBtn.addEventListener('click', async () => {
+        stopBtn.disabled = true;
+        try {
+            await fetch('/api/launcher/stop/', { method: 'POST' });
+        } catch (_) {}
+    });
+
+    pollLauncherStatus();
+    setInterval(pollLauncherStatus, 2000);
 }
 
 // ── Script editor ──────────────────────────────────────────────────────────
@@ -814,7 +1009,6 @@ let editorSid = null;
 async function loadScriptIntoEditor(sid, label) {
     editorSid = sid;
     const titleEl = document.getElementById('editor-title');
-    const codeEl  = document.getElementById('editor-code');
     const saveBtn = document.getElementById('editor-save');
     const runBtn  = document.getElementById('editor-run');
     const status  = document.getElementById('editor-status');
@@ -830,15 +1024,17 @@ async function loadScriptIntoEditor(sid, label) {
     // Switch to editor tab
     document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.getAttribute('data-tab') === 'editor'));
     document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('active', p.id === 'pane-editor'));
+    setTimeout(() => window.cmEditor?.refresh(), 10);
 
     try {
         const res = await fetch('/api/scripts/' + encodeURIComponent(sid) + '/');
         if (res.status === 404) {
-            codeEl.value = '# ' + (label || sid) + ' 스크립트가 없습니다.\n# 여기에 코드를 작성하고 저장하세요.\n\nimport time\n\nctx.set_opening("' + sid.replace(/-/g, '/').replace(/_/g, '.') + '")\n';
+            const placeholder = '# ' + (label || sid) + ' 스크립트가 없습니다.\n# 여기에 코드를 작성하고 저장하세요.\n\nimport time\n\nctx.set_opening("' + sid.replace(/-/g, '/').replace(/_/g, '.') + '")\n';
+            if (window.cmEditor) window.cmEditor.setValue(placeholder);
             status.textContent = '새 파일';
         } else if (res.ok) {
             const data = await res.json();
-            codeEl.value = data.content || '';
+            if (window.cmEditor) window.cmEditor.setValue(data.content || '');
             status.textContent = '로드 완료: ' + sid;
         } else {
             status.textContent = '로드 실패';
@@ -862,8 +1058,22 @@ async function pollSysinfo() {
     } catch (_) {}
 }
 
+// Init CodeMirror
+window.cmEditor = CodeMirror.fromTextArea(document.getElementById('editor-code'), {
+    mode: 'python',
+    lineNumbers: true,
+    indentUnit: 4,
+    tabSize: 4,
+    indentWithTabs: false,
+    electricChars: true,
+    matchBrackets: true,
+    extraKeys: { "Tab": "indentMore", "Shift-Tab": "indentLess" },
+    theme: 'default',
+});
+
 renderSnapshot(state.snapshot);
 setupForms();
+setupLauncher();
 connectEvents();
 pollSysinfo();
 setInterval(pollSysinfo, 3000);

@@ -2,6 +2,7 @@ import json
 import queue
 import socket
 import threading
+import time
 from collections import deque
 from copy import deepcopy
 from datetime import datetime
@@ -13,15 +14,17 @@ UDP_HOST = "127.0.0.1"
 UDP_EVENT_PORT = 37000
 UDP_ACTION_PORT = 37001
 MAX_RECENT_EVENTS = 300
+USER_UNIT_OVERRIDE_SECONDS = 10.0
 
 REPRESENTATIVE_STRATEGIES = {
     "Protoss": [
+        {"label": "자율 플레이", "opening": "auto_play", "summary": "종족 자동 감지, 경제·전투 전 과정 자율 운영"},
         {"label": "PvZ 10/12 Gate", "opening": "PvZ_10/12gate", "summary": "무난한 기본 오프닝"},
         {"label": "PvZ Bisu", "opening": "PvZ_bisu", "summary": "운영형 커세어/하이템플러 계열"},
         {"label": "PvT 12 Nexus", "opening": "PvT_12nexus", "summary": "빠른 확장 중심"},
         {"label": "PvP 3 Gate Robo", "opening": "PvP_3gaterobo", "summary": "로보틱스 압박"},
         {"label": "PvU Forge", "opening": "PvU_forge", "summary": "범용 포지 기반 수비"},
-        {"label": "포지 더블넥", "opening": "PvU_forge_double_nexus", "summary": "포토캐논 수비 후 빠른 넥서스 확보"},
+        {"label": "포지 더블넥", "opening": "PvU_forge_double_nexus", "cpp_opening": "PvU_forge", "summary": "포토캐논 수비 후 빠른 넥서스 확보"},
         {"label": "질럿 러쉬", "opening": "PvU_zealot_rush", "summary": "가스 생략, 8~9 파일런 후 질럿 다수 생산"},
         {"label": "다크 템플러", "opening": "PvU_dark_templar", "summary": "은폐 DT로 탐지 강제 및 피해"},
         {"label": "리버 드랍", "opening": "PvU_reaver_drop", "summary": "셔틀+리버로 본진 일꾼/건물 파괴"},
@@ -29,6 +32,7 @@ REPRESENTATIVE_STRATEGIES = {
         {"label": "앞마당 멀티", "opening": "PvU_natural_expand", "summary": "앞마당 넥서스 빠른 확장으로 자원 우위 확보"},
     ],
     "Terran": [
+        {"label": "자율 플레이", "opening": "auto_play", "summary": "종족 자동 감지, 경제·전투 전 과정 자율 운영"},
         {"label": "TvZ 1 Rax FE", "opening": "TvZ_1raxfe", "summary": "정석 빠른 확장"},
         {"label": "TvZ 2 Rax", "opening": "TvZ_2rax", "summary": "초반 압박"},
         {"label": "TvT 1 Fact FE", "opening": "TvT_1factfe", "summary": "안정적인 메카 전개"},
@@ -42,6 +46,7 @@ REPRESENTATIVE_STRATEGIES = {
         {"label": "앞마당 멀티", "opening": "TvU_natural_expand", "summary": "앞마당 커맨드센터 빠른 확장으로 자원 우위 확보"},
     ],
     "Zerg": [
+        {"label": "자율 플레이", "opening": "auto_play", "summary": "종족 자동 감지, 경제·전투 전 과정 자율 운영"},
         {"label": "ZvZ 9 Pool Spire", "opening": "ZvZ_9poolspire", "summary": "뮤탈 전환형"},
         {"label": "ZvT 3 Hatch Muta", "opening": "ZvT_3hatchmuta", "summary": "클래식 뮤탈 운영"},
         {"label": "ZvT 9 Pool Lurker", "opening": "ZvT_9poollurker", "summary": "러커 타이밍"},
@@ -87,9 +92,14 @@ class UdpBridgeService:
             "supply_total": None,
             "manual_mode": None,
             "python_mode": False,
+            "current_script_id": None,
+            "user_unit_overrides": {},
             "last_error": None,
             "start_tile_x": -1,
             "start_tile_y": -1,
+            "map_width_tiles": 128,
+            "map_height_tiles": 128,
+            "enemy_start_locations": [],
             "mineral_fields": [],
             "geysers": [],
             "own_units": [],
@@ -169,6 +179,13 @@ class UdpBridgeService:
     def _apply_event_to_state(self, event):
         payload = event.get("payload", {})
         event_name = event.get("event")
+        now = time.time()
+
+        # Drop expired user overrides on every state update.
+        overrides = self._state.get("user_unit_overrides") or {}
+        self._state["user_unit_overrides"] = {
+            k: v for k, v in overrides.items() if float(v) > now
+        }
 
         if event_name == "onStart":
             self._state["status"] = "game connected"
@@ -177,6 +194,9 @@ class UdpBridgeService:
             self._state["is_replay"] = payload.get("is_replay")
             self._state["start_tile_x"] = payload.get("start_tile_x", -1)
             self._state["start_tile_y"] = payload.get("start_tile_y", -1)
+            self._state["map_width_tiles"] = payload.get("map_width_tiles", 128)
+            self._state["map_height_tiles"] = payload.get("map_height_tiles", 128)
+            self._state["enemy_start_locations"] = payload.get("enemy_start_locations", [])
             self._state["mineral_fields"] = payload.get("mineral_fields", [])
             self._state["geysers"] = payload.get("geysers", [])
             self._state["own_units"] = payload.get("units", [])
@@ -205,12 +225,31 @@ class UdpBridgeService:
             self._state["winner"] = payload.get("winner")
             self._state["manual_mode"] = None
             self._state["python_mode"] = False
+            self._state["current_script_id"] = None
+            self._state["user_unit_overrides"] = {}
             self._state["own_units"] = []
             self._state["enemy_units"] = []
         elif event_name == "manual_mode_changed":
             self._state["manual_mode"] = payload.get("manual_mode") == "true"
         elif event_name == "python_mode_changed":
             self._state["python_mode"] = payload.get("python_mode") == "true"
+        elif event_name == "script_status":
+            status = payload.get("status")
+            script_id = payload.get("script_id")
+            if status == "started":
+                self._state["current_script_id"] = script_id
+            elif status == "stopped" and self._state.get("current_script_id") == script_id:
+                self._state["current_script_id"] = None
+        elif event_name == "ui_action_sent":
+            action = payload.get("action") or {}
+            atype = action.get("type")
+            if atype in {"unit_move", "unit_stop", "unit_attack_move", "unit_attack_unit", "gather_unit", "build"}:
+                try:
+                    unit_id = int(action.get("unit_id"))
+                except (TypeError, ValueError):
+                    unit_id = None
+                if unit_id is not None:
+                    self._state["user_unit_overrides"][str(unit_id)] = now + USER_UNIT_OVERRIDE_SECONDS
 
     def emit_local_event(self, event_name, payload):
         event = {
@@ -223,7 +262,7 @@ class UdpBridgeService:
         }
         self._record_event(event)
 
-    def send_action(self, action):
+    def send_action(self, action, origin="ui"):
         self.start()
         payload = json.dumps(action, ensure_ascii=False).encode("utf-8")
         with self._lock:
@@ -231,7 +270,12 @@ class UdpBridgeService:
         if send_sock is None:
             raise RuntimeError("Action socket is not initialized")
         send_sock.sendto(payload, (UDP_HOST, UDP_ACTION_PORT))
-        self.emit_local_event("ui_action_sent", {"action": action})
+        if origin == "ui":
+            self.emit_local_event("ui_action_sent", {"action": action})
+        elif origin == "script":
+            self.emit_local_event("script_action_sent", {"action": action})
+        else:
+            self.emit_local_event("action_sent", {"action": action, "origin": origin})
 
     def subscribe(self):
         self.start()
