@@ -1,0 +1,80 @@
+-- In Game Colors
+0x00 [ ] - Null Character
+0x01 [] - Default
+0x02 [] - Light Blue (Default Color)
+0x03 [] - Yellow
+0x04 [] - White
+0x05 [] - Sticky dark grey (don't use)
+0x06 [] - Red
+0x07 [] - Green
+0x08 [] - Red
+0x09 [	] - Light Blue
+0x0A [] - Invisible
+0x0B [] - Invisible
+0x0C [] - Invisible
+0x0D [] - Light Blue
+0x0E [] - River blue
+0x0F [] - Teal
+0x10 [] - Purple
+0x11 [] - Orange
+0x12 [] - Right Align (Text)
+0x13 [] - Center Align (Text)
+0x14 [] - Invisible
+0x15 [] - Brown
+0x16 [] - Off White (not as bright as 0x04)
+0x17 [] - Yellow
+0x18 [] - Dark Green
+0x19 [] - Peach
+0x1A [] - Light Blue
+0x1B [] - Peach
+0x1C [] - Navy Blue
+0x1D [] - Army Green
+0x1E [] - Grey
+0x1F [] - Teal
+
+-- Control
+0x00 - Null Character
+0x08 - Invisible
+0x09 - Tabulation
+0x0A - Newline
+0x0B - 
+0x0C - Used to crash back in v1.12 and below, now is only newline
+0x0D - Invisible
+0x12 - Align text right
+0x13 - Align text center
+0x14 - Text is gone?
+--/Control
+
+-- In Lobby Colors
+0x00 [ ] - Null Character
+0x01 [] - Light Blue (Default)
+0x02 [] - Light Blue
+0x03 [] - Green
+0x04 [] - Light Green
+0x05 [] - Grey
+0x06 [] - White
+0x07 [] - Red
+0x08 [] - Black (Invisible)
+0x09 [	] - TAB
+0x0A [] - Nothing (New Line)
+0x0B [] - Invisible
+0x0C [] - Invisible
+0x0D [] - Nothing (New Line)
+0x0E [] - Black (Invisible)
+0x0F [] - Black (Invisible)
+0x10 [] - Black (Invisible)
+0x11 [] - Black (Invisible)
+0x12 [] - Right Align (Text)
+0x13 [] - Center Align (Text)
+0x14 [] - Black (Invisible)
+0x15 [] - Black (Invisible)
+0x16 [] - Black (Invisible)
+0x17 [] - Black (Invisible)
+0x18 [] - Black (Invisible)
+0x19 [] - Black (Invisible)
+0x1A [] - Normal (Default)
+0x1B [] - Black (Invisible)
+0x1C [] - Black (Invisible)
+0x1D [] - Black (Invisible)
+0x1E [] - Black (Invisible)
+0x1F [] - Black (Invisible)

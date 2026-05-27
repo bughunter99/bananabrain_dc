@@ -1,0 +1,36 @@
+Infected	9c70	StringCompare?
+Infected	9c89	ReadNick2
+Infected	9ce6	HasNickChanged?
+Infected	1a0c3	Interface Tick
+Infected	1ae08	Draw Playerlist in lobby
+Infected	1b7a2	LobbyChatWrite
+Infected	1cb40	Draw?
+Infected	1e2f5	continue
+Infected	1e390	Removing prevents drawing
+Infected	62575	CheckReplaySaveTime in savefunction
+Infected	7faff	Display BnetMsg in Lobby
+Infected	85430	ret prevents crash related to teamcircles
+Infected	86a33	Action Hook Here
+Infected	96743	Hotkey selection color
+Infected	97230	changing selection
+Infected	97fb5	Call DrawUnits3
+Infected	996cb	Hotkey Selection Circle
+Infected	99db0	Team Circle needed?
+Infected	9a3f0	Remove Team Circle
+Infected	9a43e	Removes old selection ring
+Infected	9ac6b	Show Team Circle
+Infected	a8e26	Readnick3
+Infected	b9c4f	Enter Lobby
+Infected	c23de	Remove old selection
+Infected	c246a	Add new circle
+Infected	c95d1	CheckReplaySaveTime
+Infected	cda1c	End previous frame
+Infected	cdaef	Replay packet >255 bytes
+Infected	cdb0b	action timestamp
+Infected	d4bdb	remove old ring
+Infected	d4fc0	ecx=x,edx=y
+Infected	d6494	!!!
+Infected	d9533	DoMove
+Infected	d9563	DoDraw
+Infected	dff90	Multi instance
+Infected	e6186	Playercolor?

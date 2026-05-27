@@ -1,0 +1,95 @@
+==Repaydata during game==
+Search for:
+Starcraft\SWAR\lang\net_record.cpp
+2nd hit
+
+AddCommand to Replay function
+find it by finding the replaydata in mem
+breakpoint on write
+
+004CDA00  /$  8B50 14       MOV EDX,DWORD PTR DS:[EAX+14]
+004CDA03  |.  85D2          TEST EDX,EDX
+004CDA05  |.  56            PUSH ESI
+004CDA06  |.  74 1E         JE SHORT Infected.004CDA26
+004CDA08  |.  8B48 08       MOV ECX,DWORD PTR DS:[EAX+8]
+004CDA0B  |.  8B70 0C       MOV ESI,DWORD PTR DS:[EAX+C]
+004CDA0E  |.  2BCA          SUB ECX,EDX
+004CDA10  |.  03CE          ADD ECX,ESI
+004CDA12  |.  75 08         JNZ SHORT Infected.004CDA1C
+004CDA14  |.  83C6 FB       ADD ESI,-5
+004CDA17  |.  8970 0C       MOV DWORD PTR DS:[EAX+C],ESI
+004CDA1A  |.  EB 03         JMP SHORT Infected.004CDA1F
+004CDA1C  |>  884A FF       MOV BYTE PTR DS:[EDX-1],CL    //Size of previous frame written here
+004CDA1F  |>  C740 14 00000>MOV DWORD PTR DS:[EAX+14],0
+004CDA26  |>  8B0D 24F25700 MOV ECX,DWORD PTR DS:[57F224]
+004CDA2C  |.  8B50 0C       MOV EDX,DWORD PTR DS:[EAX+C]
+004CDA2F  |.  8948 18       MOV DWORD PTR DS:[EAX+18],ECX
+004CDA32  |.  8B48 08       MOV ECX,DWORD PTR DS:[EAX+8]
+004CDA35  |.  8B70 18       MOV ESI,DWORD PTR DS:[EAX+18]
+004CDA38  |.  89340A        MOV DWORD PTR DS:[EDX+ECX],ESI
+004CDA3B  |.  8B48 0C       MOV ECX,DWORD PTR DS:[EAX+C]
+004CDA3E  |.  8B50 08       MOV EDX,DWORD PTR DS:[EAX+8]
+004CDA41  |.  83C1 05       ADD ECX,5
+004CDA44  |.  03D1          ADD EDX,ECX
+004CDA46  |.  8948 0C       MOV DWORD PTR DS:[EAX+C],ECX
+004CDA49  |.  8950 14       MOV DWORD PTR DS:[EAX+14],EDX
+004CDA4C  |.  5E            POP ESI
+004CDA4D  \.  C3            RETN
+
+Up in the callchain
+
+00486A15  |>  83E8 02       |SUB EAX,2                               ;  Case 57 of switch 00486322
+00486A18  |.  C745 FC 02000>|MOV [LOCAL.1],2
+00486A1F  |.  8945 08       |MOV [ARG.1],EAX
+00486A22  |.  78 2F         |JS SHORT Infected.00486A53
+00486A24  |.  56            |PUSH ESI                                ; /Arg1
+00486A25  |.  E8 C6C00300   |CALL Infected.004C2AF0                  ; \Infected.004C2AF0
+00486A2A  |>  8B15 80265100 |MOV EDX,DWORD PTR DS:[512680]
+00486A30  |.  8B7D FC       |MOV EDI,[LOCAL.1]
+00486A33  |.  A1 A46B5900   |MOV EAX,DWORD PTR DS:[596BA4]
+00486A38  |.  52            |PUSH EDX                                ; /Arg1 = 00000000
+00486A39  |.  8BDE          |MOV EBX,ESI                             ; |
+00486A3B  |.  E8 70700400   |CALL Infected.004CDAB0                  ; \Infected.004CDAB0
+00486A40  |.  8B45 08       |MOV EAX,[ARG.1]
+00486A43  |.  03F7          |ADD ESI,EDI
+00486A45  |.  8B3D FC0E6D00 |MOV EDI,DWORD PTR DS:[6D0EFC]
+00486A4B  |>  85C0          |TEST EAX,EAX
+00486A4D  |.^ 0F85 7DF8FFFF \JNZ Infected.004862D0
+
+Interesting:
+00486A33  |.  A1 A46B5900   |MOV EAX,DWORD PTR DS:[596BA4]
+004CDA08  |.  8B48 08       MOV ECX,DWORD PTR DS:[EAX+8]
+ECX now contains pointer to the actual replaydata
+
+breakpoint some replaydata on read
+end game
+olly pops inside save replay
+go up the callchain till SaveReplay is called
+004EE81E  |>  6A 01         PUSH 1                                   ; /Arg1 = 00000001
+004EE820  |.  B8 F8FE4F00   MOV EAX,Infected.004FFEF8                ; |ASCII "LastReplay"
+004EE825  |.  E8 760EFFFF   CALL <Infected.SaveReplay>               ; \Infected.004DF6A0
+
+Replay read in Storm #491
+
+==Recording Replayframes(contains one or more commands and a timestamp).==
+Format as described in BWrepActions.cpp from RExplorer/BWChart:
+
+<buffer>           ::= {<time param><block size>{<actions>}}
+<time param>       ::= 4 byte time value indicating offset from beginning of games (=time)
+<block size>       ::= 1 byte size of all actions in that time tick
+<action>           ::= <player id><order type><order param list>
+<player id>        ::= 1 byte player id found in the header in section 1
+<order type>       ::= 1 byte id of the type of order
+<order param list> ::= number, format and meaning determined by order type;
+
+When a command for a new frame is recorded, or the old frame is full, a new frame-entry is created. This creation function first writes the size of the old frame at byte 4 of the old frame. Then it creates a new frame beginning with the timestamp.
+I hook where it writes the size of the old frame, because at that time the beginning address of the old frame and the size of the old frame are both known.
+The address where it writes is 4CDA1C.
+Because the size of the command I want to replace is smaller then 5 bytes(required for call/jmp patch) I insert a short jump to free memory direcly before the function. In this mini cave I add the call to my hook function, the original command and a jump back to the function.
+
+==Saving a replay==
+push 1;
+mov EAX,PointerToReplayName
+Call $4DF6A0;
+
+PointerToReplayName is a 0 terminated string which contains the replayname relative to the replay basedirectory but not including the fileextension.

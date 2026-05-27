@@ -1,0 +1,6 @@
+[2026-05-23 16:20:09] Injection failed.
+This is caused when BWAPI crashes before injecting completely.
+ID 00000000: 
+[2026-05-23 16:26:54] Injection failed.
+This is caused when BWAPI crashes before injecting completely.
+ID 00000000: 

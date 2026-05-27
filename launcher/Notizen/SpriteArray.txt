@@ -1,0 +1,79 @@
+Sprite
+0	4	Prev *Sprite(63F1D0)
+4	4	Next *sprite(629D80)
+8	2	SpriteID
+A	1	bTeamColor
+B	1
+C	1
+D	1	bAnimationLevel
+E	1	Flags_E
+10	2	SpriteStructNum
+14	2	PosX
+16	2	PosY
+18	4	57AE28	*Image 
+1C	4	57EDB8	*Image (sometimes too large)
+20	4	57ADE8	*Image
+
+00 – DWORD prev entry(mem)/higher animation level
+04 – DWORD next entry(mem)/lower animation level
+08 – WORD Image entry(ID)
+0a – Palette Type
+0b - Direction
+0c - ???, based partially from unk in images byte 0x2 – mirror?partially off floats, messed with by animated idle in units.dat
+0e – horizontal offset
+0f – vertical offset
+10 - header location iscript start
+12 - current iscript offset
+14 - ?
+16 – Current Iscript animation
+17 - wait time?
+18 – frame set being played
+1a –
+20 -
+24 – 
+26 - 
+28 - 
+2a - 
+2c – offset of grp file in mem
+30 – overlay – used in warp texture?/cunit pointer?
+34 – Render Function - Palette
+38 – Render Function – Palette
+3c – points back to sprite?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Image
+0	4	Ptr to Image 57EAE8
+4	4	Ptr to Image 57EAE8
+8-1F
+20	2	18
+22	2	78
+24-27
+28	2	36
+2A	2	37
+2E-33
+34	4	Ptr 40AC2E Entry Addr
+38	4	Ptr 4D5270
+3C	4	Ptr 63F3C8
+
+
+Sprite
+0	4	Ptr to Sprite(63F1D0)
+4	4	Ptr to sprite(629D80)
+8-13
+14	2	PosX
+16	2	PosY
+18		57AE28	Ptr to Image 
+1C		57EDB8	Ptr to Image (sometimes too large)
+20		57ADE8	Ptr to Image

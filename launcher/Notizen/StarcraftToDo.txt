@@ -1,0 +1,26 @@
+Launcher:
+* Add injection support
+* Add Chl support
+* Improved Autoupdate
+* Add Signature support
+Stormplugin:
+* Debug SelectionCircles
+* FirstPersonReplays
+Chaosplugin:
+* Block F1
+* Improve Autoreplay
+Antihack
+* Rally detection in teammelee
+
+http://www.playsc.com/bbs/redirect.php?tid=112152&goto=lastpost
+
+Done:
+* Create Stormplugin framework
+* Add UnshiftHotkeys
+
+Blizzard
+* /r command
+* RWT
+
+Other suggestions:
+A DND which blocks the other players in your game

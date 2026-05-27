@@ -1,0 +1,38 @@
+Comparing your list with http://www.staredit.net/maplantis/index.php?wiki=69 the array at 0052F5A8 is probably the image array.
+"0x52E548 ....... 325120 (5080*64) .......... Image array"
+According to my updater 52E548(1.14) corresponds to 52F568 in 1.15.3
+For some reason 52F5A8 and 52F568 are not exactly the same. The differece is 0x40 which is the same as two image entries.
+Btw does anybody have the layout of the sprite and image entries in these arrays? And how did you find out that much without a debugger?
+
+My current very incomplete layout is the following, but if somebody already has reversed them, it'd save me a bit of reversing.
+
+[code]Sprite
+0	4	Prev *Sprite(63F1D0)
+4	4	Next *sprite(629D80)
+8	2	SpriteID
+A	1	bTeamColor
+B	1
+C	1
+D	1	bAnimationLevel
+E	1	Flags_E
+10	2	SpriteStructNum
+14	2	PosX
+16	2	PosY
+18	4	57AE28	*Image 
+1C	4	57EDB8	*Image (sometimes too large)
+20	4	57ADE8	*Image
+[/code]
+
+[code]Image
+0	4	Ptr to Image(57EAE8)
+4	4	Ptr to Image(57EAE8)
+8-1F
+20	2	(18)
+22	2	(78)
+24-27
+28	2	(36)
+2A	2	(37)
+2E-33
+34	4	Ptr to Code (Entry Address 40AC2E)
+38	4	Ptr to Code (4D5270)
+3C	4	Ptr to Sprite 63F3C8[/code]

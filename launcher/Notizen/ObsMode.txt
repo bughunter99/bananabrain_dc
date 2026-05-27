@@ -1,0 +1,29 @@
+Add 00401000 to all addresses to get in memory addr
+Change some references to LocalFactionID to a var inside the plugin
+This variable is modified in a helperthread to the selectedplayerid
+0x0185
+0x025509
+0x0256F7
+0x026269
+0x058248
+0x058280
+0x06E5BA
+0x06E6E0
+0x06E6F7
+0x0E422E
+0x0E42A2
+0x0E42CB
+0x0E42F4
+0x0E4316
+
+Mov Register,1
+0x00024A4E B9 01000000 90	Mov ecx,1;nop;
+0x000258EF B8 01000000   	Mov eax,1
+0x00026250 B8 01000000		Mov eax,1
+0x000268DE B8 01000000		Mov eax,1
+0x00026C81 BB 01000000 90	Mov ebx,1;nop;
+
+Jumppatch (injhlp loaded at 00D40000)
+0x0002BEC9 E9 InjHlp+10C0 90 //Cancelbuild???
+0x0008531F E9 InjHlp+35E0 90 //ActionHook
+0x000F1FA8 E9 InjHlp+38F0 90 //TextCommandHook

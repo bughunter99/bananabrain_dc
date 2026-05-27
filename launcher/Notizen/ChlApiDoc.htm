@@ -1,0 +1,140 @@
+<h2>Module-Handles</h2>
+<h3>property Module.UpdateUrl:String;</h3>
+<h4>Description</h4>
+<div class="description">
+ Url from which to update the plugin. Begins with a prefix specifing the protocoll.<br/>
+ Currently the only valid protocol is bwl.<br/>
+ Example <em>&quot;bwl:http://www.example.com/chaos/samplepluginupdate&quot;</em>
+</div>
+<h4>Specification:</h4>
+<ul class="spec">
+ <li>May be read in mainthread</li>
+ <li>May be written in Chl1_Load</li>
+</ul>
+
+<h2>Plugin-Handles</h2>
+<h3>property Plugin.Name:String;</h3>
+Name of the plugin
+
+ <li>May be read in mainthread
+ <li>May be written during plugin creation
+
+<h3>property Plugin.Author:String;</h3>
+Name of the plugin author
+
+Defaults to VersionInfo.Company
+ <li>May be read in mainthread
+ <li>May be written during plugin creation
+
+<h3>property Plugin.Description:String;</h3>
+Description of the plugin
+
+ <li>Defaults to VersionInfo.Description
+ <li>May be read in mainthread
+ <li>May be written during plugin creation
+
+<h3>property BanRisk:integer;</h3>
+Estimated banrisk of the plugin
+
+ <li>Defaults to brUnknown
+ <li>May be read in mainthread
+ <li>May be written during plugin creation
+
+Valid values:
+ <li>brUnknown            = 0;//No Information available<br/>
+ <li>brNone               = 1;//No interaction with the game<br/>
+ <li>brLow                = 2;//No injection, no codechanges<br/>
+ <li>brMedium             = 3;//Injection, but no codechanges to game code<br/>
+ <li>brHigh               = 4;//Changes to game code
+
+<h3>property IndependentModule:boolean;</h3>
+Does the plugin continues working after launcher terminates?<br/>
+This is the case for some plugins which are injected and don't require the launcher process anymore.
+
+ <li>Defaults to false
+ <li>May be read in mainthread
+ <li>May be written during plugin creation
+
+<h3>property NeedsInjection:boolean;</h3>
+Should the launcher inject the plugin into the game process?<br/>
+Be careful to adjust the BanRisk property.
+
+ <li>Defaults to false
+ <li>May be read in mainthread
+ <li>May be written during plugin creation
+
+<h3>property AllowLateActivation:boolean;</h3>
+Allow late execution when the game already runs/is no longer suspenden.<br/>
+Is required if the launcher attaches itself to an already running game
+
+ <li>Defaults to true
+ <li>May be read in mainthread
+ <li>May be written during plugin creation
+
+<h3>property NonHooking:boolean;</h3>
+Hooks no the game functions<br/>
+Be careful in conjunction with RegisterCallback, as that can add hooks too<br/>
+Be careful to adjust the BanRisk property.
+
+ <li>Defaults to true
+ <li>May be read in mainthread
+ <li>May be written during plugin creation
+
+<h3>property GivesAdvantage:boolean;</h3>
+For plugins like BWCoach<br/>
+Makes the plugin incompatible with most ladders
+
+ <li>Defaults to false
+ <li>May be read in mainthread
+ <li>May be written during plugin creation
+
+<h3>property OnConfig:Event;</h3>
+Called when the user presses the Config button<br/>
+The config button is disabled if OnConfig=nil
+
+procedure Config(UserData:pointer);stdcall;
+stdcall void Config(void* UserData);
+
+ <li>Executed in mainthread
+ <li>Defaults to nil
+ <li>May be read in mainthread
+ <li>May be written during plugin creation
+
+<h3>property OnIsCompatible:Event;</h3>
+function which checks if the plugin is compatible with a certain gameversion
+
+procedure IsCompatible(UserData:pointer;var Compatibility:TCompatibility);stdcall;
+stdcall void IsCompatible(void* UserData;TCompatibility* Compatibility);
+
+ <li>Executed in mainthread
+ <li>Required for all plugins
+ <li>May be read in mainthread
+ <li>May be written during plugin creation
+
+<h3>property OnStart:Event;</h3>
+Called after the game process is created<br/>
+Called in the launcher process<br/>
+Check Game.Resumed to check if the game is still suspended or already resumed<br/>
+Call OpenSysHandle(GameHandle,'ProcessHandle',hProcess) to get a process handle to the game<br/>
+It is your responsability to close it again with CloseHandle(hProcess)
+
+procedure Start(UserData:pointer);stdcall;
+stdcall void Start(void* UserData);
+
+ <li>Executed in mainthread
+ <li>Defaults to nil
+ <li>May be read in mainthread
+ <li>May be written during plugin creation
+
+<h3>property OnStop:Event;</h3>
+Called after the game process terminates<br/>
+Called in the launcher process
+
+procedure Stop(UserData:pointer);stdcall;
+stdcall void Stop(void* UserData);
+
+ <li>Executed in mainthread
+ <li>Defaults to nil
+ <li>May be read in mainthread
+ <li>May be written during plugin creation
+

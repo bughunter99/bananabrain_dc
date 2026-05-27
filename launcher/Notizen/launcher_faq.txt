@@ -1,0 +1,24 @@
+Common Antihack Launcherproblems:
+1. It is not recommended to install the launcher directly in the starcraft directory, as this can lead to problems with the No-CD. The NoCD is not included in Build 38, use a normal(from your CD) or a mini Install.exe([link]) named Broodwar.mpq placed in your SC-Directory. See 1.15.2 Patchlog
+2. There is no launcher for Mac(and probably never will be, begging doesn't help). You can use ICCup with Mac, but without launcher. Info how to add the gateway
+3. Try disabling your Firewall, Virusscanner etc. These programs sometimes block the code injection or the communication with the server.
+4. Make sure you unpack ALL files.
+5. Disabling DEP on Vista is no longer necessary. Reenable it if you disabled it, as it increases security. Don't forget to give adminrights to launcher.exe, which you can do in its properties.
+6. When creating a shortcut (i.e. on Desktop) make sure you create a shortcut and NOT copy the launcher.exe.
+7. Using the provided setup is recommended over unzipping yourself
+8. Plugins modifing starcraft memory are not compatible with the Antihack. This includes tec27's APM-Alert and AdvLoader2.0. Make sure AdvLoader2.0 is NOT set to PASSIVE mode, you can be banned for using these plugins
+9. Make sure"HKEY_LOCAL_MACHINE\SOFTWARE\Blizzard Entertainment\Starcraft\Program" points to the correct path and ends with \Starcraft.exe
+
+If you still have Problems, make sure to post the following in your thread:
+1. Windows-Version (98,XP,Vista etc) and if you have a 32 or 64bit version
+2. Your "__log.txt" which can be found in your launcher directory
+3. For creating a clear log, start starcraft, connect to ICCup, start a game, end the game, disconnect and terminate SC. Only after that copy&paste your log. Of course that only applies if your problem does not prevent you from starting starcraft/playing a game. Simply make sure that you post the log of a starcraftsession in which the problem occured.
+4. An accurate description what does not work/where the error occures.
+Does the launcher terminate? When? Can you join the server? Does it report that your antihack ist not active?
+
+Chaosplugin related (Autoreplay etc)
+1. Is it enabled in the launcher and is the desired setting enabled?
+2. Is the starcraftpath in iccup.ini and the registry
+"HKEY_LOCAL_MACHINE\SOFTWARE\Blizzard Entertainment\Starcraft\Installpath" correctly set?
+3. If there are >255 replays in the autoreplayfolder, more replays are saved, but SC does not display them
+4. If you still have Problems, make sure to post "Chaosplugin.log" in addition to the info required for launcherproblems (see above)

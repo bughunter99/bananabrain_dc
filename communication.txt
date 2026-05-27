@@ -131,3 +131,10 @@ D:\data3\bwapid_ai_dc\launcher\Source\Launcher\Launcher\Chaoslauncher.exe
 ai_dc.dll이 로딩됐다고는 뜨는데, web에서 돈 모으기, 자율 플레이 이걸걸 눌러도
 게임에 반영되지 않아. 그리고 게임 로그도 올라오지 않아.
 
+
+
+좋아. 웹을 띄우면 
+"전략을 선택하면 스크립트가 여기 표시됩니다."
+라고 나오는데, 전략을 눌러도 거기 스크립트가 안 나와.
+
+

@@ -1,0 +1,2 @@
+49AC6F 2xNOP for selection circles
+49A3F0 jnz->jmp

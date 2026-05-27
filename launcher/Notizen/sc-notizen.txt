@@ -1,0 +1,56 @@
+1.15.2
+Repaydata
+Search for:
+Starcraft\SWAR\lang\net_record.cpp
+2nd hit
+
+
+Network Delay
+the code near 48580F is responsable for latency, but I don't understand where LAN/bnet etc comes into play
+
+0051CE88 is the Network-Mode delay multiplicator
+006556CC is the Selected Delay
+
+004D925B     B8 01000000    MOV EAX,$Delay
+
+$Delay:
+1 for Singleplayer
+2 for LAN
+5 for BNet
+
+===Offsets 1.15.2===
+
+ShowSaveButton
+004C96E0
+ShowSaveButtonInReplay
+004C9727
+CheckReplayInSave
+462585
+PlayerID   : $00512684;
+Minerals   : $0057F0D8; //DW, +4*Player
+Vespine    : $0057F108; //DW, +4*Player
+Ingame     : $006D11D4; //DW
+Time       : $0057F224; //DW
+Population : $00581DFC; //DW, +4*Player
+PopAndBuild: $00581DCC; //DW, +4*Player
+Larva      : $0058545C; //DW, +4*Player
+Race       : $0059B404; //DW, +72*Player
+//2x of displayed Supply etc
+Supply     : $005821EC; //DW, +4*Player
+Control    : $0058215C; //DW, +4*Player
+Psy        : $0058227C; //DW, +4*Player
+MaxSupply  : $005821BC; //DW, +4*Player
+MaxControl : $0058212C; //DW, +4*Player
+MaxPsy     : $0058224C; //DW, +4*Player
+LobbyPlayerInfo:$0057EEE8;
+NetModeLatency :$004D925B;
+GameName       :$005967E4;
+BNet           :$006D5EB0;
+Ingame         :$006D11D4;
+Lobby          :$0068ED08;
+Briefing       :$00655498;
+DownloadStatus :$0068F4E4;
+ReplaySlot1    :$00596805;
+ReplaySlot2    :$1505E418;
+Replay         :$006D0EFC;
+
