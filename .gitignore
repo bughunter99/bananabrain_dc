@@ -15,7 +15,7 @@ ipch/
 *.VC.db
 *.VC.VC.opendb
 
-# Compiled object/intermediate files
+# Compiled object/intermediate files (C++)
 *.obj
 *.pch
 *.pdb
@@ -30,6 +30,7 @@ ipch/
 *.log
 *.recipe
 *.FileListAbsolute.txt
+*.lastbuildstate
 vcpkg.applocal.log
 
 # Build output binaries (keep source, exclude compiled output)
@@ -37,6 +38,20 @@ src/Release/*.dll
 src/Release/*.exe
 src/Debug/*.dll
 src/Debug/*.exe
+
+# FPC / Pascal / Delphi compiled unit & object files
+*.o
+*.ppu
+*.dcu
+*.dcp
+*.dres
+*.compiled
+*.identcache
+*.lps
+
+# Lazarus/FPC build executables (launcher build outputs)
+launcher/Experimente/**/*.exe
+launcher/Source/**/*.exe
 
 # Root-level build logs
 build_release.log
