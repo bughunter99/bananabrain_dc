@@ -84,6 +84,7 @@ class UdpBridgeService:
             "is_1v1": None,
             "is_ffa": None,
             "opening": None,
+            "detected_opening": None,
             "mode": None,
             "frame": -1,
             "minerals": None,
@@ -108,6 +109,8 @@ class UdpBridgeService:
         self._subscribers = {}  # type: Dict[int, queue.Queue]
         self._subscriber_ids = count(1)
         self._event_ids = count(1)
+        self._event_handlers = {}  # type: Dict[int, Tuple[str, Any]]
+        self._handler_ids = count(1)
 
     def start(self):
         with self._lock:
@@ -171,10 +174,21 @@ class UdpBridgeService:
             self._state["frame"] = event.get("frame", -1)
             self._apply_event_to_state(event)
             subscribers = list(self._subscribers.values())
+            handlers = [
+                handler
+                for event_name, handler in self._event_handlers.values()
+                if event_name == "*" or event_name == event.get("event")
+            ]
 
         envelope = {"kind": "event", "event": event}
         for subscriber in subscribers:
             subscriber.put(envelope)
+        for handler in handlers:
+            try:
+                handler(event)
+            except Exception:
+                # 콜백 오류는 브리지 수신 루프를 중단시키지 않는다.
+                pass
 
     def _apply_event_to_state(self, event):
         payload = event.get("payload", {})
@@ -203,7 +217,7 @@ class UdpBridgeService:
         elif event_name == "onStart_initialized":
             self._state["is_1v1"] = payload.get("is_1v1")
             self._state["is_ffa"] = payload.get("is_ffa")
-            self._state["opening"] = payload.get("opening")
+            self._state["detected_opening"] = payload.get("opening")
         elif event_name == "onFrame":
             self._state["minerals"] = payload.get("minerals")
             self._state["gas"] = payload.get("gas")
@@ -288,6 +302,17 @@ class UdpBridgeService:
     def unsubscribe(self, subscriber_id):
         with self._lock:
             self._subscribers.pop(subscriber_id, None)
+
+    def add_event_handler(self, event_name, handler):
+        self.start()
+        handler_id = next(self._handler_ids)
+        with self._lock:
+            self._event_handlers[handler_id] = (str(event_name or "*"), handler)
+        return handler_id
+
+    def remove_event_handler(self, handler_id):
+        with self._lock:
+            self._event_handlers.pop(handler_id, None)
 
     def snapshot(self):
         self.start()

@@ -33,13 +33,6 @@ uses
 {$R *.res}
 begin
   try
-    if not IsFirstInstance
-      then begin
-        Log('Already running');
-        ActivateOldInstance;
-        exit;
-      end;
-
     if Updater.InstallUpdates
       then begin
         Log('Quit to install updates');

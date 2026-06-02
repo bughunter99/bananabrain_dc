@@ -151,3 +151,251 @@ git push
 
 
 전략을 누르면 진짜 여기 파이썬 코드에 따라 게임이 진행되는거야?
+
+
+전략을 누르면 그 전략으로 게임이 진행되는거 맞아?
+아니면 그 위에 실행을 눌러야 되?
+
+
+파이썬 코드 있는데, 간단한 하이라이팅 기능 추가해줘.
+그냥 텍스트라 눈에 잘 안 들어와.
+
+
+이상한데? 스타크래프트가 뜨긴하는데, 예전에 그 데블유 모드가 아니야, 테두리도 없고. 수정할 수 있겠어? 그 타이틀바도 있어서 그걸로 창 이동도 가능해야해. 여기 런처 폴더에 그 소스는 없는거야?
+
+
+뭔가 굉장히 느려. 내가 지금 폰에서 윈도우 컴에 원격으로 붙어서 하고 있는데, 예전 버전은 괜찮은데, 지금 네가 만든 버전으로 스타크래프트를 띄우면 화면이 엄청 버벅거려. 예전껄 써서 할 순 없을까?
+
+
+그래도 똑같이 버벅되. 카오스 런처 소스가 있잖아. 그걸 참고해서 똑같이 띄울 순 없어?
+
+
+32비트 파이썬을 깔을까?
+
+
+실행하니까
+카오스 런처 실행 실패 : 윈에러 740
+요청한 작업을 수행하려면 권한 상승이 필요합니다.
+라고 떠
+
+
+처음 게임 시작하고,
+P V P 10/12 GATE 전략 선택했는데,
+gather_minerals command applied
+만 계속 뜨고, 프루브들이 미네랄에 붙어만 있어.
+이거 문젠데 확인해줘.
+
+
+디엘엘 카피를 안해서 그런가.
+D:\util\StarCraft\bwapi-data\AI
+이 위치인데 빌드 결과물을 여기로 복사하고 진행해줘.
+
+
+처음 게임 시작하고,
+돈 모으기 누르니까 처음 프루브 4마리는 일을 하기 시작해.
+그리고 P V P 10/12 GATE 전략 선택했는데,
+일꾼을 더 뽑진 않고 아무일도 일어나지 않아.
+여기 웹 페이지엔 다음처럼 되어있는데, 이게 이 전략이랑 맞는거야?
+
+
+똑같이 해보니까 안되는데?
+그냥 돈만 모으고 아무것도 안해
+
+content.js:27 Error translating word: Error: Could not establish connection. Receiving end does not exist.
+
+
+
+이거 기존에 자율 플레이나 전략들이 디엘엘 소스안에 들어가 있거든. 이걸 파이썬으로 바꿔서 여기 웹 화면으로 볼 수 있게 해주고, 그걸 실행해서 예전 전략처럼 플레이되게 해줘.
+아마 자율 플레이 코드가 있을꺼야.
+
+
+D:\data3\bwapid_ai_dc\AI\python\web_bridge\bridgeui\scripts
+전략을 짠게 여기 있는거야?
+너무 간단한데? 그래서 지금도 그냥 돈 100되면 파일런만 지어.
+그 위에 뭔가 조건이 있어야 할꺼 같아.
+원래 씨뿔뿔 코드에는 그런 조건이 있을껄?
+
+
+초반에 일꾼을 뽑아야하는데 아직도 그러지 않거든. 확인해줘.
+
+
+기본적으로 자율 플레이를 누르면 알아서 대충 하잖아? 이것도 파이썬 코드로 만들어서 실행하게 해줘. 여기서 다른 전략들을 차용하는 식으로 해야할꺼 같아. 기존 전략은 그냥 그것만 딱 완료하면 끝이라 아무것도 안해.
+
+
+
+개더 미네랄스 커맨드 어플라이드는 왜 자꾸 나오는거야?
+끝없이 나오는데?
+
+
+그리고 공격도 원래 자율 플레이 했을때랑 다르게 안해.
+탐색도 안하고. 아마 제대로 파이썬으로 컨버전이 안된거 같아.
+그 코드는 굉장히 길꺼거든.
+다시 점검해줘.
+
+
+기존에 자율 플레이하던거랑 너무 달라. 너무 단순하게 그냥 돈 모으고 유닛 뽑고 탐색도 너무 일찍해. 원본 소스를 파이썬으로 100% 동일하게 변환한것 맞아?
+
+
+프로토스 선택해서 게임 시작하고 젤 위에 있는 전략인 p vs z 10 12 gate 를 선택하면 그것만 하고 그 뒤에 아무것도 안해. 여기 프로그램에서 전략의 구조를 전체적으로 바꿔야될것 같은게, 어떻게냐면. 기본적으로는 자율 플레이가 실행이 되고 사용자가 선택한 전략, 빌드 오더를 실행하는 구조가 되서 선택한 전략으로 빌드를 짜면 그 뒤로는 자율로 되게. 그러니까 기본으로 자율 플레이 루프가 돌고, 사용자가 선택한 빌드가 아직 완료가 안됏으면 그걸 우선으로 실행되는 구조로 되야할것 같아. 네 생각은 어때?
+
+
+자율 플레이할땐 안 그러는데, 
+P V P 10/12 GATE 전략 선택하니까
+개더 미네랄스 커맨드 어플라이드
+메세지가 계속 나와.
+
+
+포지 더블넥 빌드 오더 바꿔줘. 첫번째 파일런은 앞마당에 짓고, 거기 포지를 지은다음에 넥서스를 짓고, 그 다음에 캐논을 짓게해줘. 파이선 스크립트를 바꾸면 되는거지?
+
+
+5-28T03:02:46.982
+f2172
+📝 스크립트 로그 — PvU_forge_double_nexus: 훈련: Protoss Probe
+2026-05-28T03:02:46.950
+f2172
+📝 스크립트 로그 — PvU_forge_double_nexus: [trace:PvU_ForgeDoubleNexus] phase=Opening frame=2172 supply=9 workers=9 minerals=296 gas=0 pylons=0 forge=0 cannons=0 nexus=1 gates=0
+2026-05-28T03:02:46.633
+f2166
+📝 스크립트 로그 — PvU_forge_double_nexus: 훈련: Protoss Probe
+2026-05-28T03:02:46.355
+f2154
+📝 스크립트 로그 — PvU_forge_double_nexus: 훈련: Protoss Probe
+2026-05-28T03:02:46.080
+f2148
+📝 스크립트 로그 — PvU_forge_double_nexus: 훈련: Protoss Probe
+2026-05-28T03:02:45.802
+f2142
+📝 스크립트 로그 — PvU_forge_double_nexus: 훈련: Protoss Probe
+2026-05-28T03:02:45.483
+f2136
+📝 스크립트 로그 — PvU_forge_double_nexus: 훈련: Protoss Probe
+2026-05-28T03:02:45.384
+f2130
+📝 스크립트 로그 — PvU_forge_double_nexus: [trace:PvU_ForgeDoubleNexus] phase=Opening frame=2130 supply=9 workers=9 minerals=296 gas=0 pylons=0 forge=0 cannons=0 nexus=1 gates=0
+2026-05-28T03:02:45.074
+f2124
+📝 스크립트 로그 — PvU_f
+
+
+
+처음에 프로토스로 게임 시작해서
+포지 더블넥을 선택했는데, 웹의 제일 위 화면에
+오프닝 : 4 게이트 군 이라고 나와. 이거 뭐야? 잘못 나온거야?
+
+
+
+D:\data3\bwapid_ai_dc\src\Source 에 보면 많은 소스가 있는데, 이걸 파이썬 스크립트로 뺼 수 있는건 다 뺴써 web에서 관리해서 ZMQ로 전달할 수 있는건 다 그렇게 해줘. 아주 기본적인것만 남겨놓고.
+
+일단 D:\data3\bwapid_ai_dc\src\Source
+여기 소스를 분석해서 뭐하는건지 파악해줘.
+
+여기서 전략관련된 파일은 뭐야?
+
+
+전략을 실행하려면 상태를 파악하고있어야 하고, 그 조건에 맞으면 실행할텐데, 그 관련 소스는 뭐야?
+
+
+이 전략 관련된 로직을 파이썬으로 빼고 싶은데,
+계획을 세워줘.
+
+
+게임이 진행되면서 발생하는 메시지를 받으면 파이썬에서 콜백으로 호출되게하고,
+그 함수에서는 여기서 그렇게 하듯이, 이벤트를 파싱해서 상태를 업데이트하고,
+그거에 맞는 전략을 선택해서 수행하는 명령을 다시 디엘엘로 줘서 지금처럼 동작하게 할 수 있어?
+있으면 그렇게 개발할 계획을 세워줘.
+
+
+씨뿔뿔 소스에서 전략, 상태 관련된 코드는 지워줘. 그리고 빌드해서 배포해줘.
+
+
+Startcraft is already running 이라는 msg는 어디서 띄우는지 확인해줘.
+
+
+이 조건을 없애고 빌드해줘.
+
+
+예전에 빌드해줬었는데, 다음 두개 폴더 찾아볼래?
+D:\lib\lazarus2.2
+C:\FPC\3.2.2
+
+
+여기 플러그인 폴더에 있는 BWAPI_PluginInjector.bwl랑 wmode.bwl는 뭘로 만드는거야?
+
+
+An extenal instal ofStarcraft is already running.
+이라고 뜨는데 확인해줘.
+나는 스타크래프트를 한 컴퓨터에서 w모드로 두개 띄우고 싶은거야.
+
+
+에러나는데?
+Eternal exception EEDFADE 
+Class: E ExternalExepction
+이라고 떠.
+
+
+Chaoslauncher.exe 를 여러개로 실행하고 싶은데, 두번째꺼 실행하면 첫번째꺼가 활성화가 되. 확인해줘.
+
+
+
+Chaoslauncher.exe 으로 스트크래프트를 실행하면서 dll을 injection하고 게임을 시작하면
+게임이 그냥 끝나버리는데 원인이 뭘까.
+아깐 괜찮았어.
+
+
+dll injection을 안하고 게임을 시작하면 괜찮아. 로그가 어디 남는데가 있을까?
+
+
+starerror.png
+0x0000000067607D57에 있는 명령이 0x00000000CCCCCCCC의 메모리를 참조했습니다. 메모리는 read될 수 없었습니다.
+
+
+여기 카오스 런처에서 세팅을 저장하는 위치가 어딘지 알려줘.
+
+
+이걸 프로그램 이름으로 바꿀 수 있어?
+예를 들어, Chaoslauncher.exe 면 이 그 위치로 하고,
+Chaoslauncher2.exe면 HKEY_CURRENT_USER\Software\Chaoslauncher2 로 하고
+
+
+그냥 여기 프로그램이 있는 위치에 프로그램이름과 동일하게 ini로 할 수 있어?
+
+
+w-mode를 설정하는게 비활성화 되어있는데?
+
+
+Chaoslauncher.exe 를 starcraft를 실행시키고,
+Chaoslauncher2.exe로 starcraft를 또 start하면 start되지 않고,
+이미 떠 있는 starcraft이 활성화 되.
+이 증상 확인해줘.
+
+
+여기 launcher 소스를 분석해서 startcraft를 cmd 창에서 똑같이 실행할 수 있는 방법이 있는지 알려줘.
+
+
+파이썬 32비트를 D:\WPy32-3680에 깔았는데, 이걸 참고해서 변환해줘.
+위 3번 기존 Chaoslauncher.ini 호환하는데 콘솔로 실행할 수 있었으면 좋겠어.
+이걸 할 수 있는 계획을 세워줘.
+
+
+
+cd /d D:\data3\bwapid_ai_dc\launcher\Source\Launcher\Launcher
+D:\WPy32-3680\python-3.6.8\python.exe chaoslauncher_cli.py --dry-run
+
+cd /d D:\data3\bwapid_ai_dc\launcher\Source\Launcher\Launcher
+D:\WPy32-3680\python-3.6.8\python.exe chaoslauncher_cli.py
+
+여기 Chaoslauncher.ini 를 파이썬 인자로 넣게 해줘.
+
+
+cd /d D:\data3\bwapid_ai_dc\launcher\Source\Launcher\Launcher
+D:\WPy32-3680\python-3.6.8\python.exe chaoslauncher_cli.py --ini "D:\data3\bwapid_ai_dc\launcher\Source\Launcher\Launcher\Chaoslauncher.ini" --sc2-quick-probe
+
+
+cd /d D:\data3\bwapid_ai_dc\launcher\Source\Launcher\Launcher
+D:\WPy32-3680\python-3.6.8\python.exe chaoslauncher_cli.py --ini "D:\data3\bwapid_ai_dc\launcher\Source\Launcher\Launcher\Chaoslauncher2.ini" --sc2-quick-probe
+
+
+cd /d D:\data3\bwapid_ai_dc\launcher\Source\Launcher\Launcher
+D:\WPy32-3680\python-3.6.8\python.exe chaoslauncher_cli.py --ini "D:\data3\bwapid_ai_dc\launcher\Source\Launcher\Launcher\Chaoslauncher2.ini" --sc2-quick-probe
+
+

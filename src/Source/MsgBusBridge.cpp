@@ -479,13 +479,9 @@ void MsgBusBridge::apply_action_object(const std::string& type,
     }
 
     if (type == "set_auto_play") {
-        if (is_python_mode()) {
-            bwapi_log("set_auto_play ignored in python mode");
-            return;
-        }
-        set_manual_mode(false);
-        Broodwar->sendText("%s", utf8_to_ansi("[ai_dc] 자율 플레이 시작").c_str());
-        bwapi_log("auto play enabled");
+        // Python-only policy: C++ autonomous strategy loop is disabled.
+        set_manual_mode(true);
+        bwapi_log("set_auto_play ignored (python-only control)");
         return;
     }
 
@@ -497,16 +493,8 @@ void MsgBusBridge::apply_action_object(const std::string& type,
     }
 
     if (type == "set_opening") {
-        auto it = sf.find("opening");
-        if (it != sf.end() && !it->second.empty()) {
-            bool applied = force_strategy_opening(it->second);
-            if (applied) {
-                Broodwar->sendText("%s", utf8_to_ansi("Switch opening: " + it->second).c_str());
-                bwapi_log("opening set to " + it->second);
-            } else {
-                bwapi_log("failed to set opening " + it->second);
-            }
-        }
+        // Python-only policy: opening selection is handled by Python scripts.
+        bwapi_log("set_opening ignored (python-only control)");
         return;
     }
 
@@ -616,9 +604,24 @@ void MsgBusBridge::apply_action_object(const std::string& type,
         if (btype_it != sf.end() && tx_it != nf.end() && ty_it != nf.end()) {
             UnitType bt = unit_type_by_name(btype_it->second);
             if (bt != UnitTypes::Unknown) {
-                unit->build(bt, TilePosition(tx_it->second, ty_it->second));
+                TilePosition tp(tx_it->second, ty_it->second);
+                bool can_here = Broodwar->canBuildHere(tp, bt, unit, false);
+                bool issued = unit->build(bt, tp);
                 bwapi_log("build: " + btype_it->second + " at tile " +
-                          std::to_string(tx_it->second) + "," + std::to_string(ty_it->second));
+                          std::to_string(tx_it->second) + "," + std::to_string(ty_it->second) +
+                          " | canBuildHere=" + (can_here ? std::string("true") : std::string("false")) +
+                          " | issued=" + (issued ? std::string("true") : std::string("false")) +
+                          " | unit_id=" + std::to_string(unit->getID()) +
+                          " | gathering=" + (unit->isGatheringMinerals() ? std::string("true") : std::string("false")) +
+                          " | carrying=" + (unit->isCarryingMinerals() ? std::string("true") : std::string("false")) +
+                          " | constructing=" + (unit->isConstructing() ? std::string("true") : std::string("false")));
+                send_raw_event("build_command_result",
+                    "{\"building_type\":\"" + escape_json(btype_it->second) + "\"" +
+                    ",\"tile_x\":" + std::to_string(tx_it->second) +
+                    ",\"tile_y\":" + std::to_string(ty_it->second) +
+                    ",\"can_build_here\":" + (can_here ? "true" : "false") +
+                    ",\"issued\":" + (issued ? "true" : "false") +
+                    ",\"unit_id\":" + std::to_string(unit->getID()) + "}");
             } else {
                 bwapi_log("build: unknown type " + btype_it->second);
             }

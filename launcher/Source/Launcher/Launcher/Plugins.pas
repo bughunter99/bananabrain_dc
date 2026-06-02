@@ -105,6 +105,42 @@ implementation
 
 uses Plugins_BWL4,Plugins_DLL,Plugins_AdvLoader,Plugins_ICCup,inject,config;
 
+procedure ApplyMultipleInstancePatch(const Version:TGameVersion;hProcess:THandle);
+const
+  // Patch bytes from launcher/Experimente/MultipleInstance/MultipleInstance.dpr
+  PatchAddress = $004DFFF0;
+  PatchBytes:array[0..5]of byte=($E9,$89,$00,$00,$00,$90);
+var
+  BytesIO:SIZE_T;
+begin
+  // Address is for classic StarCraft 1.16.1 only.
+  if Version.Version<>'1.16.1' then exit;
+  BytesIO:=0;
+  if not WriteProcessMemory(hProcess,Pointer(PatchAddress),@PatchBytes[0],SizeOf(PatchBytes),BytesIO)
+    then raise exception.create('Could not apply multiple-instance patch'#13#10+GetLastErrorString);
+  Log('Multiple-instance patch applied');
+end;
+
+function FindScWindowByProcessID(const AProcessID:Cardinal):HWND;
+var
+  Wnd:HWND;
+  WindowProcessID:Cardinal;
+begin
+  result:=0;
+  Wnd:=FindWindow('SWarClass',nil);
+  while Wnd<>0 do
+    begin
+      WindowProcessID:=0;
+      GetWindowThreadProcessId(Wnd,@WindowProcessID);
+      if WindowProcessID=AProcessID then
+        begin
+          result:=Wnd;
+          exit;
+        end;
+      Wnd:=FindWindowEx(0,Wnd,'SWarClass',nil);
+    end;
+end;
+
 Type TPluginUpdateModule=class(TUpdateModule)
   protected
   public
@@ -399,8 +435,6 @@ var ProcessInfo:TProcessInformation;
     error:Cardinal;
 begin
   UpdateScRunning;
-  if GameInfo.Running then raise exception.create(GameName+' is already running');
-  if (AProcessID=0)and(GameFindProcessID<>0) then raise exception.create('An external instance of'+GameName+' is already running');
   try
     GameInfo.Clear;
     Log('Starting Game '+Version.Name+' '+Version.Filename);
@@ -437,6 +471,7 @@ begin
         GameInfo.ProcessID:=ProcessInfo.dwProcessId;
         GameInfo.ThreadID:=ProcessInfo.dwThreadId;
         GameInfo.Suspended:=true;
+        ApplyMultipleInstancePatch(Version,GameInfo.hProcess);
       end
       else begin
         Log('OpenProcess');
@@ -504,8 +539,10 @@ begin
     GameInfo.Clear;
     raise;
   end;
-  wnd:=FindWindow('SWarClass',nil);
-  SendMessage(wnd,$402,0,0);
+  if GameInfo.ProcessID<>0
+    then wnd:=FindScWindowByProcessID(GameInfo.ProcessID)
+    else wnd:=FindWindow('SWarClass',nil);
+  if wnd<>0 then SendMessage(wnd,$402,0,0);
 end;
 
 { TPlugin }

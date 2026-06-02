@@ -31,10 +31,14 @@ SUPPLY = {
 class StrategyHelper:
     """ScriptContext 를 감싸는 편의 클래스."""
 
+    # 동일 프로세스 내 중복 스크립트/스레드가 있어도 확장 명령 스팸을 막기 위한 전역 가드
+    _global_expand_order_until = 0.0
+
     def __init__(self, ctx):
         self.ctx = ctx
         self.race = None
         self._natural_tile = None
+        self._natural_expand_retry_at = 0.0
         self._pending_builds = {}   # btype -> timestamp (중복 건설 방지)
         self._attacking = False
         self._attack_target = None
@@ -316,6 +320,15 @@ class StrategyHelper:
             return False
         if self.minerals() < cost:
             return False
+        now = time.time()
+        if now < StrategyHelper._global_expand_order_until:
+            return False
+        if now < self._natural_expand_retry_at:
+            return False
+        # 이미 멀티가 착공/완료 상태면 재명령 방지
+        if self.count_including_unfinished(BASE[self.race]) >= 2:
+            self._natural_expand_retry_at = now + 10.0
+            return False
         if not self._natural_tile:
             self._natural_tile = self.ctx.get_natural_expansion_sync()
         if not self._natural_tile:
@@ -324,9 +337,16 @@ class StrategyHelper:
         if not worker:
             return False
         tx, ty = self._natural_tile
-        self.ctx.build(worker["id"], BASE[self.race], tx, ty)
-        self.ctx.log(f"확장: {BASE[self.race]} → ({tx},{ty})")
+        loc = self.ctx.find_build_location_sync(worker["id"], BASE[self.race], near_tile_x=tx, near_tile_y=ty)
+        if not loc:
+            self._natural_expand_retry_at = now + 0.75
+            self.ctx.log(f"확장 위치 탐색 실패: {BASE[self.race]} near ({tx},{ty})")
+            return False
+        self.ctx.build(worker["id"], BASE[self.race], loc[0], loc[1])
+        self.ctx.log(f"확장: {BASE[self.race]} → ({loc[0]},{loc[1]}) [near {tx},{ty}]")
         self._natural_tile = None  # 다음 확장을 위해 초기화
+        self._natural_expand_retry_at = now + 20.0  # 일꾼이 이동·착공할 시간 확보 후 재시도
+        StrategyHelper._global_expand_order_until = now + 20.0
         return True
 
     # ── 전투 ────────────────────────────────────────────────────────────────
@@ -435,10 +455,14 @@ class StrategyHelper:
         self.ctx.log("[helper] 스카웃 출발")
 
     def delegate_to_cpp(self, opening=None):
-        """[비활성화] C++ 자율 루프로 위임하지 않고 Python 스크립트를 계속 실행합니다.
-        모든 전략 로직은 Python으로만 처리되어야 합니다.
-        이 메서드는 하위 호환성을 위해 남겨두었으며 아무 동작도 하지 않습니다."""
-        self.ctx.log(f"[helper] delegate_to_cpp 무시됨 — Python 자율 플레이 유지 (요청 오프닝: {opening or '자율'})")
+        """오프닝 스크립트 뒤를 Python 자율 플레이로 이어서 실행합니다.
+
+        기존 전략들은 오프닝만 끝내고 C++ 메인으로 넘기는 구조였는데,
+        현재는 Python 자율 루프가 그 뒤를 이어받도록 연결한다.
+        """
+        self.ctx.log(f"[helper] delegate_to_cpp → Python 자율 플레이로 전환 (요청 오프닝: {opening or '자율'})")
+        from auto_play import run as _auto_play_run
+        _auto_play_run(self.ctx)
 
 
 def minimum(a, b):

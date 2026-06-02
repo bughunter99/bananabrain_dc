@@ -1,7 +1,7 @@
 unit Config;
 
 interface
-uses windows,inifiles,registry,launcher_game;
+uses windows,inifiles,registry,sysutils,launcher_game;
 
 Type TSettings=record
       StartMinimized:boolean;
@@ -15,8 +15,18 @@ Type TSettings=record
     end;
     
 var Settings:TSettings;
-    ini:TRegistryInifile;
+  ini:TCustomIniFile;
 implementation
+
+function GetLauncherIniFilePath: String;
+var ExeName: String;
+begin
+  ExeName:=ChangeFileExt(ExtractFileName(ParamStr(0)), '');
+  if ExeName=''
+    then ExeName:='Chaoslauncher';
+  result:=IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+ExeName+'.ini';
+end;
+
 { TSettings }
 
 procedure TSettings.Load;
@@ -60,7 +70,7 @@ begin
 end;
 
 initialization
-  ini:=TRegistryInifile.create('Software\Chaoslauncher');
+  ini:=TIniFile.create(GetLauncherIniFilePath);
 finalization
   ini.free;
   ini:=nil;

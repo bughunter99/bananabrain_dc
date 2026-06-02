@@ -1,5 +1,74 @@
 # Progress Notes
 
+## 2026-06-02 - W-mode launch test (Python CLI)
+
+Validation run (plugins enabled, no --no-plugins):
+- Command:
+  - D:/WPy32-3680/python-3.6.8/python.exe chaoslauncher_cli.py
+- INI confirmed:
+  - PluginsEnabled -> W-MODE 1.02=1
+
+Observed in launcher log:
+- wmode.bwl loaded as active plugin.
+- ApplyPatchSuspended for W-MODE 1.02 called.
+- ApplyPatch for W-MODE 1.02 called.
+- Launch completed with message: Starting Starcraft completed.
+
+Also adjusted launcher CLI behavior:
+- Added optional dual-address probe mode: --auto-multi-patch-pairs
+- Added configurable strict quick-exit window: --fast-exit-timeout-ms (default 7000)
+- Added external launcher delegation mode for known working MultiInstance builds:
+  - --delegate-launcher-exe <path>
+  - --delegate-count <n>
+  - --delegate-interval-ms <ms>
+
+## 2026-06-02 - start.bat/start2.bat admin auto-elevation
+
+Changed:
+- launcher/Source/Launcher/Launcher/start.bat
+- launcher/Source/Launcher/Launcher/start2.bat
+
+Behavior:
+- Both scripts now self-elevate via UAC when not running as administrator.
+- After elevation, each script runs the same validated command:
+  - start.bat -> Chaoslauncher.ini + --sc2-quick-probe
+  - start2.bat -> Chaoslauncher2.ini + --sc2-quick-probe
+
+## 2026-06-01 - Chaoslauncher Python CLI (INI compatible, console mode)
+
+Added:
+- launcher/Source/Launcher/Launcher/chaoslauncher_cli.py
+
+Implemented behavior:
+- Reads existing Chaoslauncher.ini (Launcher / PluginsEnabled / PluginsRunIncompatible).
+- Resolves StarCraft InstallPath from registry (32-bit view first, then 64-bit).
+- Discovers Starcraft*.exe and selects version using INI GameVersion.
+- Launches StarCraft with CREATE_SUSPENDED.
+- Applies 1.16.1 multiple-instance memory patch (same address/bytes as launcher source).
+- Loads BWL4 plugins from Plugins/*.bwl and calls:
+  - ApplyPatchSuspended while process is suspended
+  - ApplyPatch after WaitForInputIdle
+- Supports console options: --ini, --version-name, --list-versions, --dry-run, --no-plugins, --quiet.
+
+Validation run on local 32-bit Python (D:/WPy32-3680):
+- py_compile success:
+  - D:/WPy32-3680/python-3.6.8/python.exe -m py_compile chaoslauncher_cli.py
+- Dry-run without plugins:
+  - Selected version resolved as Starcraft 1.16.1 from Chaoslauncher.ini + registry path.
+- Dry-run with plugins:
+  - Plugins scanned and loaded from launcher/Source/Launcher/Launcher/Plugins
+  - INI enable flags respected (W-MODE loaded, disabled plugins skipped)
+
+## 2026-06-01 - Python launcher focus/single-instance diagnostics
+
+Changed in launcher/Source/Launcher/Launcher/chaoslauncher_cli.py:
+- Added fast-exit detection after resume to catch cases where StarCraft exits shortly after launch.
+- Added PID-targeted SC window lookup/notify instead of notifying any SWarClass window.
+
+Expected behavior:
+- If second launch is blocked by game single-instance logic, script now raises an explicit error with exit code.
+- Existing-window focus side effect is reduced because notify is only sent to the newly launched process window.
+
 ## 2026-05-27 - Strategy parity hook rollout (final Zerg set)
 
 Updated scripts:
@@ -118,6 +187,147 @@ Verification:
 Issue:
 - User-issued unit move/attack/build commands were getting overridden quickly by script automation.
 
+## 2026-05-28 - Opening label split
+
+Changed:
+- Dashboard top bar now separates the selected strategy from the game-detected opening.
+- `onStart_initialized` now updates `detected_opening` instead of overwriting the selected strategy field.
+
+Reason:
+- The UI was showing the engine's inferred opening in the same slot as the user's selected build, which made valid selections look wrong.
+
+## 2026-05-28 - Strategy handoff to Python auto-play
+
+Changed:
+- `delegate_to_cpp()` now hands the running strategy over to `auto_play.run(ctx)` instead of acting as a no-op.
+- Opening scripts should now continue into the base autonomous loop after the build-order phase finishes.
+
+Reason:
+- Strategy scripts were returning immediately after the opening, which left the game without the normal follow-up autonomous behavior.
+
+## 2026-05-28 - Natural expansion placement fix
+
+Changed:
+- `expand()` now searches for an actual build location near the natural expansion tile before issuing the Nexus/CC/Hatch build command.
+- Failed natural expansion placement now backs off briefly and retries instead of logging a fake success.
+
+Reason:
+- The script was treating the natural expansion tile itself as a buildable placement, which could look like a successful expansion in logs while no structure actually started.
+
+## 2026-05-28 - PvU natural expansion command-spam guard
+
+Issue:
+- `PvU_natural_expand` kept logging repeated Nexus expansion commands (`확장: Protoss Nexus -> ...`) while `nexus=1` remained unchanged.
+
+Fix:
+- In `StrategyHelper.expand()`, successful expand command now sets a long retry backoff (`_natural_expand_retry_at = now + 20.0`) to prevent rapid re-issuing.
+- In `PvU_natural_expand.py`, added `expand_sent_at` tracking.
+- Temporarily blocks `gather_idle_workers()` for 15 seconds after sending the expansion command so the builder probe is not pulled back to minerals before construction starts.
+
+Expected result:
+- Expansion command is sent once, then the probe is allowed to travel and start building without immediate script interference.
+
+## 2026-05-28 - C++ build command diagnostics added
+
+Changed:
+- Added detailed diagnostics in `MsgBusBridge.cpp` for `type == "build"` actions.
+- Build logs now include:
+  - `canBuildHere` result at requested tile
+  - whether `unit->build(...)` was actually issued (`issued=true/false`)
+  - worker state (`gathering`, `carrying`, `constructing`)
+  - worker id and target tile
+- Added `build_command_result` bridge event payload for easier runtime tracing.
+
+Build/Deploy:
+- Rebuilt `src/Release/ai_dc.dll` successfully.
+- Runtime target `D:\util\StarCraft\bwapi-data\AI\ai_dc.dll` was locked by running process, so updated binary was staged as `ai_dc.next.dll` in the same folder.
+
+## 2026-05-28 - Runtime DLL swap completed
+
+Changed:
+- Swapped staged `ai_dc.next.dll` into runtime `ai_dc.dll` at `D:\util\StarCraft\bwapi-data\AI`.
+- Preserved previous runtime version as `ai_dc.backup.20260528_042008.dll` in the same folder.
+
+Result:
+- StarCraft runtime now loads the diagnostic-enabled `ai_dc.dll` build.
+
+## 2026-05-28 - PvU natural expand early-fallback fix
+
+Issue:
+- `PvU_natural_expand` could switch to auto-play before supply 12 due to early threat/loss fallback checks, preventing natural Nexus progression.
+
+Fix:
+- In `PvU_natural_expand.py`, fallback-to-main check is now gated to run only after natural expansion has started (`nexus_count >= 2`).
+
+Result:
+- Opening flow remains in natural-expand script until expansion phase is actually engaged.
+
+## 2026-05-28 - C++ strategy path disabled (Python-only control)
+
+Changed:
+- `ai_dc.cpp`
+  - Added `g_cpp_strategy_enabled = false` policy flag.
+  - Disabled C++ strategy frame loop execution unless that flag is explicitly enabled.
+  - Stopped publishing C++ opening in `onStart_initialized` payload (now empty).
+  - Guarded `force_opening(...)` and `pick_strategy(...)` behind the strategy-enabled flag.
+- `MsgBusBridge.cpp`
+  - `set_auto_play` now ignored under Python-only policy.
+  - `set_opening` now ignored under Python-only policy.
+
+Build/Deploy:
+- Rebuilt Release x86 successfully.
+- Deployed updated runtime DLL to `D:\util\StarCraft\bwapi-data\AI\ai_dc.dll`.
+
+## 2026-05-28 - Event-driven Python callback strategy runtime
+
+Changed:
+- Added `bridgeui/strategy_runtime.py`:
+  - Event callback dispatcher (`onStart` / `onFrame` / `onEnd` / `script_status`)
+  - Runtime state store updated from incoming game events
+  - Strategy selector that applies target Python script automatically from event loop
+- Updated `bridgeui/views.py`:
+  - `strategy_action` now routes selection into Python runtime (`opening` -> `script_id`) and starts runtime
+
+## 2026-06-01 - Chaoslauncher rebuild with Lazarus 2.2 paths
+
+Changed:
+- Updated launcher settings registry root to be executable-name based:
+  - `Chaoslauncher.exe` -> `HKCU\\Software\\Chaoslauncher`
+  - `Chaoslauncher2.exe` -> `HKCU\\Software\\Chaoslauncher2`
+
+Build verification:
+- Rebuilt `launcher/Source/Launcher/Launcher/Chaoslauncher.exe` with FPC 3.2.2 + Lazarus 2.2 include/unit paths.
+- Mirrored fresh build to `launcher/Source/Launcher/Launcher/Chaoslauncher2.exe`.
+- Output timestamp/size:
+  - `Chaoslauncher.exe` 2606080 bytes
+  - `Chaoslauncher2.exe` 2606080 bytes
+
+## 2026-06-01 - Chaoslauncher local INI mode rebuild
+
+Changed:
+- Launcher settings backend now uses per-executable local INI files in program folder:
+  - `Chaoslauncher.exe` -> `Chaoslauncher.ini`
+  - `Chaoslauncher2.exe` -> `Chaoslauncher2.ini`
+
+Build verification:
+- Rebuilt `launcher/Source/Launcher/Launcher/Chaoslauncher.exe` with FPC 3.2.2 + Lazarus 2.2 paths (`Interfaces` path included).
+- Copied fresh binary to `launcher/Source/Launcher/Launcher/Chaoslauncher2.exe`.
+- Output timestamp/size:
+  - `Chaoslauncher.exe` 2546176 bytes (2026-06-01 22:44:04)
+  - `Chaoslauncher2.exe` 2546176 bytes (2026-06-01 22:44:04)
+
+Expected runtime behavior:
+- Each executable reads/writes its own local INI file instead of shared registry launcher settings.
+  - Added runtime APIs:
+    - `POST /api/runtime/start/`
+    - `POST /api/runtime/stop/`
+    - `POST /api/runtime/select/`
+    - `GET /api/runtime/status/`
+- Updated `bridgeui/urls.py` to expose runtime API endpoints.
+
+Result:
+- Game events are now consumed in Python callback style, state is updated in Python runtime, and strategy execution is selected/applied from Python-side logic.
+
 Fix:
 - Added per-unit user override lock in bridge state (`user_unit_overrides`, default 10s).
 - UI unit commands (`unit_move`, `unit_stop`, `unit_attack_move`, `unit_attack_unit`, `gather_unit`, `build`) now create/refresh lock for the unit.
@@ -127,3 +337,138 @@ Fix:
 Verification:
 - Modified files compile cleanly.
 - Diagnostics report no errors for bridge, script runner, helpers, and dashboard.
+
+## 2026-05-28 - PvU Forge Double Nexus 9-supply stall fix
+
+Issue:
+- `PvU_forge_double_nexus` could stall at 9 supply with 0 Pylon while minerals kept increasing.
+- Trace showed Opening phase repeating with `pylons=0`, indicating no successful first-Pylon command.
+
+Root cause:
+- The script handled natural expansion lookup failures, but not repeated natural-near Pylon placement failures after a natural tile was found.
+- This left the opening in a retry loop without triggering main-base Pylon fallback.
+
+Fix:
+- Added `natural_place_fails` tracking in `PvU_forge_double_nexus.py`.
+- If natural-near Pylon placement fails repeatedly, the script clears natural target, retries lookup, and falls back to main-base Pylon when needed.
+- Reduced natural lookup retry delay from 2.0s to 0.5s for faster recovery.
+
+Verification:
+- `python -m py_compile AI/python/web_bridge/bridgeui/scripts/PvU_forge_double_nexus.py` succeeds.
+- `git diff` confirms focused changes in the strategy runtime script.
+
+## 2026-05-28 - Callback runtime policy mode (state-driven strategy selection)
+
+Changed:
+- `bridgeui/strategy_runtime.py`
+  - Added callback handlers for `onStart_initialized`, `onUnitCreate`, `onUnitDestroy`, `onUnitComplete`, `battle_judgement`.
+  - Runtime state now tracks race/match metadata and unit snapshots (`own_units`, `enemy_units`).
+  - Added policy mode that decides script from state each frame:
+    - early game: race default opening script (`PvU_natural_expand` / `TvU_natural_expand` / `ZvU_natural_expand`)
+    - after threshold: switch to `auto_play`
+  - Added runtime policy events (`runtime_policy_decision`, `runtime_policy_mode`).
+- `bridgeui/views.py`
+  - `POST /api/runtime/start/` now supports `policy_mode` and defaults to policy mode if no opening is provided.
+  - `POST /api/runtime/select/` now supports policy-mode toggling.
+  - Added `POST /api/runtime/policy/` for explicit policy-mode on/off.
+- `bridgeui/urls.py`
+  - Added route: `/api/runtime/policy/`.
+
+Result:
+- Runtime can now consume callbacks, update state, and automatically choose opening/main scripts without manual script re-selection.
+
+## 2026-05-28 - Matchup-based opening policy in callback runtime
+
+Changed:
+- `bridgeui/strategy_runtime.py`
+  - Added matchup opening map for policy mode:
+    - PvP/PvT/PvZ + fallback PvU
+    - TvT/TvP/TvZ + fallback TvU
+    - ZvZ/ZvP/ZvT + fallback ZvU
+  - Added enemy race tracking in runtime state (`enemy_race`).
+  - Enemy race is resolved from payload (`enemy_race`/`initial_enemy_race`) and inferred from `enemy_units[].type` when needed.
+  - Policy decision event now includes `enemy_race`.
+  - `battle_judgement` pressure tags now keep matchup opening (instead of generic race fallback only).
+
+Result:
+- Policy mode now picks opening scripts by actual matchup context and keeps auto-play handoff behavior after opening phase.
+
+## 2026-05-28 - C++ bridge-only cleanup (strategy/state execution removed)
+
+Changed:
+- `src/Source/ai_dc.cpp`
+  - Removed C++ strategy/state execution path from runtime flow:
+    - no strategy object initialization/pick/apply in `onStart`/`onEnd`
+    - no `before()` / `after()` manager pipeline on `onFrame`
+    - no C++ autonomous strategy frame execution
+  - Kept UDP bridge event emission and action polling path.
+  - Simplified unit callback handlers to event/log forwarding only.
+  - Simplified in-game debug text to bridge-only status.
+
+Build/Deploy:
+- Built `Release|x86` successfully (`src/Release/ai_dc.dll`).
+- Deployed to runtime path: `D:/util/StarCraft/bwapi-data/AI/ai_dc.dll`.
+
+## 2026-06-01 - W-MODE config button enabled fallback
+
+Issue:
+- `wmode.bwl` selected in launcher showed disabled `Config` button when plugin did not expose `OpenConfig` API.
+
+Fix:
+- In `launcher/Source/Launcher/Launcher/Main.pas`, treat `wmode.bwl` as configurable via external INI fallback.
+- `Config` button is now enabled for W-MODE even when `HasConfig=false`.
+- Clicking `Config` for W-MODE now opens `wmode.ini` with Notepad (prefers StarCraft folder path).
+
+Build verification:
+- Rebuilt `launcher/Source/Launcher/Launcher/Chaoslauncher.exe` successfully.
+- Mirrored to `launcher/Source/Launcher/Launcher/Chaoslauncher2.exe`.
+- Output timestamp/size:
+  - `Chaoslauncher.exe` 2546688 bytes (2026-06-01 22:48:26)
+  - `Chaoslauncher2.exe` 2546688 bytes (2026-06-01 22:48:26)
+
+## 2026-06-01 - W-MODE not applying on start (ini profile fix)
+
+Issue:
+- `wmode.ini` existed in StarCraft folder, but launcher started without window mode.
+
+Root cause:
+- Local profile `Chaoslauncher.ini` had no `[PluginsEnabled]` entry for W-MODE after moving settings storage to per-exe ini.
+- In this state, `wmode.bwl` is discovered/loaded by launcher but not activated for game start.
+
+Fix applied:
+- Added `W-MODE 1.02=1` under `[PluginsEnabled]` in `launcher/Source/Launcher/Launcher/Chaoslauncher.ini`.
+- Created `launcher/Source/Launcher/Launcher/Chaoslauncher2.ini` with same W-MODE enabled baseline.
+
+Validation:
+- `D:/util/StarCraft/wmode.ini` exists and contains expected `[W-MODE]` values.
+- Active launcher profile now includes W-MODE enabled key.
+
+## 2026-06-01 - Second launcher start re-activating existing StarCraft
+
+Issue:
+- After starting StarCraft from `Chaoslauncher.exe`, pressing Start from `Chaoslauncher2.exe` did not start a distinct flow and existing window was re-activated.
+
+Root causes:
+- Launcher single-instance mutex was hardcoded globally (`Chaoslauncher {GUID}`), so different executable names still collided.
+- Post-start message in `StartGame` used the first `SWarClass` window found, which could target an already running instance.
+
+Fix:
+- `OneInstance.pas`: changed mutex name to include executable basename (`Chaoslauncher` vs `Chaoslauncher2`).
+- `Plugins.pas`: added process-ID based StarCraft window lookup and send startup message to the matching process window only.
+
+Build verification:
+- Rebuilt launcher and mirrored both binaries.
+- `Chaoslauncher.exe` / `Chaoslauncher2.exe`: 2547200 bytes (2026-06-01 22:58:08).
+
+## 2026-06-01 - StarCraft single-instance bypass patch (1.16.1)
+
+Issue:
+- Even after per-exe launcher instance fixes, user still observed second start focusing existing game window.
+
+Fix:
+- Added in-process multiple-instance memory patch for StarCraft 1.16.1 in `launcher/Source/Launcher/Launcher/Plugins.pas`.
+- Patch is applied right after `CreateProcess` while process is suspended, before resume.
+- Expected runtime log marker: `Multiple-instance patch applied`.
+
+Build verification:
+- `Chaoslauncher.exe` / `Chaoslauncher2.exe`: 2547712 bytes (2026-06-01 23:07:09).

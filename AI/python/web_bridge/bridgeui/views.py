@@ -12,6 +12,7 @@ from django.views.decorators.http import require_GET, require_POST
 
 from .bridge import get_bridge_service, REPRESENTATIVE_STRATEGIES
 from . import script_runner
+from .strategy_runtime import get_strategy_runtime
 from . import launcher as _launcher
 
 
@@ -98,13 +99,24 @@ def unit_action(request):
 @require_POST
 def strategy_action(request):
     service = get_bridge_service()
+    runtime = get_strategy_runtime(service)
     body = _json_body(request)
     opening = str(body.get("opening", "")).strip()
     if not opening:
         return JsonResponse({"ok": False, "error": "opening is required"}, status=400)
-    action = {"type": "set_opening", "opening": opening}
-    service.send_action(action)
-    return JsonResponse({"ok": True, "action": action})
+
+    script_id = opening.replace("/", "-").replace(".", "_")
+    selected = runtime.set_target_strategy(script_id)
+    if not selected.get("ok"):
+        return JsonResponse(selected, status=400)
+
+    started = runtime.start(target_script_id=script_id)
+    return JsonResponse({
+        "ok": True,
+        "opening": opening,
+        "script_id": script_id,
+        "runtime": started,
+    })
 
 
 _ALLOWED_CONTROL_TYPES = {"gather_minerals", "set_auto_play", "set_manual", "scout", "block_entrance"}
@@ -246,3 +258,77 @@ def launcher_inject(request):
     result = _launcher.inject_into_running(debug=debug)
     status_code = 200 if result.get("ok") else 409
     return JsonResponse(result, status=status_code)
+
+
+# ---------------------------------------------------------------------------
+# Event-driven Python strategy runtime
+# ---------------------------------------------------------------------------
+
+@csrf_exempt
+@require_POST
+def runtime_start(request):
+    service = get_bridge_service()
+    runtime = get_strategy_runtime(service)
+    body = _json_body(request)
+    opening = str(body.get("opening", "")).strip()
+    policy_mode = body.get("policy_mode", None)
+    script_id = opening.replace("/", "-").replace(".", "_") if opening else None
+    if policy_mode is not None:
+        runtime.set_policy_mode(bool(policy_mode))
+    elif not script_id:
+        runtime.set_policy_mode(True)
+    return JsonResponse(runtime.start(target_script_id=script_id))
+
+
+@csrf_exempt
+@require_POST
+def runtime_stop(request):
+    service = get_bridge_service()
+    runtime = get_strategy_runtime(service)
+    return JsonResponse(runtime.stop())
+
+
+@csrf_exempt
+@require_POST
+def runtime_select(request):
+    service = get_bridge_service()
+    runtime = get_strategy_runtime(service)
+    body = _json_body(request)
+    opening = str(body.get("opening", "")).strip()
+    script_id = str(body.get("script_id", "")).strip()
+    policy_mode = body.get("policy_mode", None)
+    if policy_mode is not None and not script_id and not opening:
+        result = runtime.set_policy_mode(bool(policy_mode))
+        if not result.get("ok"):
+            return JsonResponse(result, status=400)
+        return JsonResponse(result)
+
+    target = script_id or (opening.replace("/", "-").replace(".", "_") if opening else "")
+    if not target:
+        return JsonResponse({"ok": False, "error": "opening or script_id is required"}, status=400)
+
+    if policy_mode is not None:
+        runtime.set_policy_mode(bool(policy_mode))
+
+    result = runtime.set_target_strategy(target)
+    if not result.get("ok"):
+        return JsonResponse(result, status=400)
+    runtime.start(target_script_id=target)
+    return JsonResponse({"ok": True, "script_id": target})
+
+
+@csrf_exempt
+@require_POST
+def runtime_policy(request):
+    service = get_bridge_service()
+    runtime = get_strategy_runtime(service)
+    body = _json_body(request)
+    enabled = bool(body.get("enabled", False))
+    return JsonResponse(runtime.set_policy_mode(enabled))
+
+
+@require_GET
+def runtime_status(request):
+    service = get_bridge_service()
+    runtime = get_strategy_runtime(service)
+    return JsonResponse(runtime.status())

@@ -1,7 +1,7 @@
 unit OneInstance;
 
 interface
-uses windows,messages;
+uses windows,messages,sysutils;
 
 var IsFirstInstance:boolean;
 procedure ActivateOldInstance;
@@ -12,6 +12,11 @@ implementation
 
 
 var AllowSetForegroundWindow:function (ProcessId:Cardinal):BOOL;stdcall;
+
+function InstanceNameSuffix:String;
+begin
+  result:=LowerCase(ChangeFileExt(ExtractFileName(ParamStr(0)),''));
+end;
 
 
 
@@ -48,7 +53,7 @@ end;
 initialization
   Mutex:=0;
   SetLastError(0);
-  Mutex:=CreateMutex(nil,false,'Chaoslauncher {9198835E-72C9-488E-A6E5-48918D904856}');
+  Mutex:=CreateMutex(nil,false,PChar('Chaoslauncher '+InstanceNameSuffix+' {9198835E-72C9-488E-A6E5-48918D904856}'));
   IsFirstInstance:=GetLastError=0;
   AllowSetForegroundWindow:=GetProcAddress(GetModuleHandle('User32.dll'),'AllowSetForegroundWindow');
 finalization

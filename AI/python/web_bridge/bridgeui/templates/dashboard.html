@@ -380,7 +380,8 @@ window.initialBridgeData = {{ initial_data|safe }};
     <span class="title">ai_dc</span>
     <div class="dot" id="conn-dot"></div>
     <span class="sb-item">Race <span id="sb-race">-</span></span>
-    <span class="sb-item">Opening <span id="sb-opening">-</span></span>
+    <span class="sb-item">선택 <span id="sb-selected">-</span></span>
+    <span class="sb-item">인식 <span id="sb-detected">-</span></span>
     <span class="sb-item">Mode <span id="sb-mode">-</span></span>
     <span class="sb-item">M<span id="sb-minerals">-</span></span>
     <span class="sb-item">G<span id="sb-gas">-</span></span>
@@ -535,7 +536,12 @@ function renderCurrentStrategy(s) {
 
 function updateHeader(s) {
     document.getElementById('sb-race').textContent = s.self_race || '-';
-    document.getElementById('sb-opening').textContent = s.opening || '-';
+    const selectedText = s.current_script_id
+        ? resolveStrategyLabel(s, s.current_script_id)
+        : '-';
+    const detectedText = s.detected_opening || s.opening || '-';
+    document.getElementById('sb-selected').textContent = selectedText;
+    document.getElementById('sb-detected').textContent = detectedText;
     document.getElementById('sb-mode').textContent = s.mode || '-';
     document.getElementById('sb-frame').textContent = s.frame ?? '-';
     document.getElementById('sb-minerals').textContent = s.minerals ?? '-';
@@ -582,6 +588,12 @@ function renderStrategies(s) {
             const label = btn.textContent.trim();
             // Load script into editor
             loadScriptIntoEditor(sid, label);
+            // Reflect selected strategy in header immediately before async events arrive.
+            if (state.snapshot && state.snapshot.state) {
+                state.snapshot.state.current_script_id = sid;
+                updateHeader(state.snapshot.state);
+                renderCurrentStrategy(state.snapshot.state);
+            }
             // Run selected strategy script so build-order changes in Python are applied.
             try {
                 await postJson(`/api/scripts/${encodeURIComponent(sid)}/run/`, {});
@@ -636,7 +648,7 @@ function describeEvent(event) {
         case 'onStart':
             return '🎮 게임 시작 — 종족: ' + (p.self_race||'?') + (p.map_name ? ' / 맵: '+p.map_name : '');
         case 'onStart_initialized':
-            return '✅ 전략 준비 완료 — 오프닝: ' + (p.opening||'?');
+            return '✅ 전략 준비 완료 — 인식 오프닝: ' + (p.opening||'?');
         case 'onEnd':
             return p.is_winner ? '🏆 게임 승리!' : '💀 게임 패배';
         case 'onFrame':
@@ -765,7 +777,7 @@ function applyIncomingEvent(event) {
     s.frame = event.frame;
 
     if (event.event === 'onStart') { s.self_race = event.payload.self_race; s.status = 'game connected'; }
-    if (event.event === 'onStart_initialized') { s.opening = event.payload.opening; }
+    if (event.event === 'onStart_initialized') { s.detected_opening = event.payload.opening; }
     if (event.event === 'onFrame') {
         s.minerals = event.payload.minerals; s.gas = event.payload.gas;
         s.supply_used = event.payload.supply_used; s.supply_total = event.payload.supply_total;

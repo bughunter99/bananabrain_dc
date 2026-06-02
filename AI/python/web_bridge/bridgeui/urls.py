@@ -21,4 +21,10 @@ urlpatterns = [
     path("api/launcher/start/", views.launcher_start, name="launcher-start"),
     path("api/launcher/stop/", views.launcher_stop, name="launcher-stop"),
     path("api/launcher/inject/", views.launcher_inject, name="launcher-inject"),
+    # Event-driven Python strategy runtime
+    path("api/runtime/start/", views.runtime_start, name="runtime-start"),
+    path("api/runtime/stop/", views.runtime_stop, name="runtime-stop"),
+    path("api/runtime/select/", views.runtime_select, name="runtime-select"),
+    path("api/runtime/policy/", views.runtime_policy, name="runtime-policy"),
+    path("api/runtime/status/", views.runtime_status, name="runtime-status"),
 ]

@@ -8,6 +8,7 @@ namespace {
 	ai_dc* g_active_bot = nullptr;
 	bool g_manual_mode = false;
 	bool g_python_mode = false;
+	bool g_cpp_strategy_enabled = false; // Python-only control mode
 
 	std::unique_ptr<Strategy> create_strategy_for_race(Race race)
 	{
@@ -485,24 +486,7 @@ void ai_dc::onStart()
  
 	if (!Broodwar->isReplay())
 	{
-		bool ok = true;
-		
-		switch (Broodwar->self()->getRace()) {
-			case Races::Protoss:
-				strategy_.reset(new ProtossStrategy());
-				break;
-			case Races::Terran:
-				strategy_.reset(new TerranStrategy());
-				break;
-			case Races::Zerg:
-				strategy_.reset(new ZergStrategy());
-				break;
-			default:
-				Broodwar->sendText("Error: This bot only plays Protoss or Terran or Zerg");
-				ok = false;
-				break;
-		}
-		
+		strategy_.reset();
 		is_1v1_ = (Broodwar->enemies().size() == 1 && Broodwar->allies().size() == 0);
 		
 		if (!is_1v1_) {
@@ -521,42 +505,24 @@ void ai_dc::onStart()
 				}
 			}
 		}
-		
-		if (ok) {
-			configuration.init();
-			srand(static_cast<unsigned int>(time(nullptr)));
-			bwem_map.Initialize(BroodwarPtr);
-			bwem_map.FindBasesForStartingLocations();
-			bwem_map.EnableAutomaticPathAnalysis();
-			base_state.init_bases();
-			path_finder.init();
-			opponent_model.init();
-			building_placement_manager.init();
-			spending_manager.init_resource_counters();
-			if (is_1v1_) result_store.init();
-			strategy_->pick_strategy(is_1v1_);
-			walkability_grid.init();
-			room_grid.init();
-			worker_manager.init_optimal_mining_data();
-			tactics_manager.set_is_ffa(is_ffa_);
-			initialized_ = true;
-			g_manual_mode = true;   // start paused: wait for UI command
-			g_python_mode = false;  // reset python mode on new game
-			log_event("onStart_initialized", {
-				arg("frame", std::to_string(Broodwar->getFrameCount())),
-				arg("is_1v1", is_1v1_ ? "true" : "false"),
-				arg("is_ffa", is_ffa_ ? "true" : "false"),
-				arg("opening", strategy_ ? strategy_->opening() : "")
-			}, "none");
-			python_bridge.send_event("onStart_initialized", {
-				{"is_1v1", is_1v1_ ? "true" : "false"},
-				{"is_ffa", is_ffa_ ? "true" : "false"},
-				{"opening", strategy_ ? strategy_->opening() : ""}
-			});
-			python_bridge.send_event("manual_mode_changed", {
-				{"manual_mode", "true"}
-			});
-		}
+
+		initialized_ = true;
+		g_manual_mode = true;   // start paused: wait for UI command
+		g_python_mode = false;  // reset python mode on new game
+		log_event("onStart_initialized", {
+			arg("frame", std::to_string(Broodwar->getFrameCount())),
+			arg("is_1v1", is_1v1_ ? "true" : "false"),
+			arg("is_ffa", is_ffa_ ? "true" : "false"),
+			arg("opening", "")
+		}, "none");
+		python_bridge.send_event("onStart_initialized", {
+			{"is_1v1", is_1v1_ ? "true" : "false"},
+			{"is_ffa", is_ffa_ ? "true" : "false"},
+			{"opening", ""}
+		});
+		python_bridge.send_event("manual_mode_changed", {
+			{"manual_mode", "true"}
+		});
 	}
 }
 
@@ -576,11 +542,7 @@ void ai_dc::onEnd(bool winner)
 	});
 
 	if (initialized_) {
-		if (is_1v1_) {
-			strategy_->apply_result(winner);
-			result_store.store();
-		}
-		worker_manager.store_optimal_mining_data();
+		// Bridge-only mode: C++ 전략/상태 결과 저장 로직 제거.
 	}
 
 	python_bridge.stop();
@@ -589,6 +551,7 @@ void ai_dc::onEnd(bool winner)
 
 bool ai_dc::force_opening(const std::string& opening)
 {
+	if (!g_cpp_strategy_enabled) return false;
 	if (!initialized_ || BroodwarPtr == nullptr || Broodwar->self() == nullptr) return false;
 
 	auto new_strategy = create_strategy_for_race(Broodwar->self()->getRace());
@@ -715,7 +678,6 @@ void ai_dc::onFrame()
 {
 	if (!initialized_) return;
 	if (Broodwar->isPaused() || !Broodwar->self()) return;
-	if (configuration.human_opponent() && Broodwar->getFrameCount() == 240) Broodwar->sendText("glhf");
 
 	python_bridge.poll_actions();
 
@@ -771,7 +733,7 @@ void ai_dc::onFrame()
 			",\"gas\":" + std::to_string(Broodwar->self()->gas()) +
 			",\"supply_used\":" + std::to_string(Broodwar->self()->supplyUsed()) +
 			",\"supply_total\":" + std::to_string(Broodwar->self()->supplyTotal()) +
-			",\"mode\":\"" + esc(strategy_ ? strategy_->mode() : "") + "\"" +
+			",\"mode\":\"" + esc((g_cpp_strategy_enabled && strategy_) ? strategy_->mode() : "python_only") + "\"" +
 			",\"python_mode\":" + (g_python_mode ? "true" : "false") +
 			",\"start_tile_x\":" + std::to_string(stx) +
 			",\"start_tile_y\":" + std::to_string(sty) +
@@ -800,29 +762,9 @@ void ai_dc::onFrame()
 		frame_payload += "}";
 		python_bridge.send_raw_event("onFrame", frame_payload);
 	}
-	
-	PerformanceTimer performance_timer;
-	
-	before();
-	// Python command-only mode: never run C++ autonomous strategy while python mode is active.
-	if (!g_manual_mode && !g_python_mode) {
-		strategy_->frame();
-		after();
-		surrender_if_hope_lost();
-		emit_battle_judgement();
-	}
+
 	log_recent_unit_commands();
-	
-	if (configuration.draw_enabled()) {
-		draw();
-		int duration = performance_timer.duration();
-		if (Broodwar->getFrameCount() == 0) {
-			frame_zero_duration_ = duration;
-		} else {
-			max_duration_ = std::max(duration, max_duration_);
-		}
-		Broodwar->drawTextScreen(4, 16, "Frame duration: %d ms, max %d ms, frame zero %d ms", duration, max_duration_, frame_zero_duration_);
-	}
+	draw();
 }
 
 void ai_dc::onSendText(std::string text)
@@ -868,8 +810,6 @@ void ai_dc::onUnitDiscover(BWAPI::Unit unit)
 	if (unit != nullptr && (unit->getPlayer() == Broodwar->self() || unit->getPlayer()->isEnemy(Broodwar->self()))) {
 		log_unit_event("onUnitDiscover", unit);
 	}
-	if (unit->getType().isBuilding()) connectivity_grid.invalidate();
-	information_manager.onUnitDiscover(unit);
 }
 
 void ai_dc::onUnitEvade(BWAPI::Unit unit)
@@ -877,7 +817,6 @@ void ai_dc::onUnitEvade(BWAPI::Unit unit)
 	if (unit != nullptr && (unit->getPlayer() == Broodwar->self() || unit->getPlayer()->isEnemy(Broodwar->self()))) {
 		log_unit_event("onUnitEvade", unit);
 	}
-	information_manager.onUnitEvade(unit);
 }
 
 void ai_dc::onUnitShow(BWAPI::Unit unit)
@@ -899,8 +838,6 @@ void ai_dc::onUnitCreate(BWAPI::Unit unit)
 	if (unit != nullptr && (unit->getPlayer() == Broodwar->self() || unit->getPlayer()->isEnemy(Broodwar->self()))) {
 		log_unit_event("onUnitCreate", unit);
 	}
-	if (unit->getType().isBuilding()) connectivity_grid.invalidate();
-	training_manager.onUnitCreate(unit);
 	auto unit_player = unit->getPlayer();
 	if (unit_player == Broodwar->self() || (unit_player != nullptr && unit_player->isEnemy(Broodwar->self()))) {
 		bool own = (unit_player == Broodwar->self());
@@ -919,13 +856,6 @@ void ai_dc::onUnitDestroy(BWAPI::Unit unit)
 	if (unit != nullptr && (unit->getPlayer() == Broodwar->self() || unit->getPlayer()->isEnemy(Broodwar->self()))) {
 		log_unit_event("onUnitDestroy", unit);
 	}
-	information_manager.onUnitDestroy(unit);
-	building_manager.onUnitLost(unit);
-	training_manager.onUnitLost(unit);
-	worker_manager.onUnitLost(unit);
-	bwem_handle_destroy_safe(unit);
-	if (unit->getType().isBuilding()) connectivity_grid.invalidate();
-	building_placement_manager.onUnitDestroy(unit);
 	int destroy_id = unit ? unit->getID() : -1;
 	std::string destroy_type = unit ? unit->getType().getName() : "";
 	auto unit_player = unit ? unit->getPlayer() : nullptr;
@@ -947,8 +877,6 @@ void ai_dc::onUnitMorph(BWAPI::Unit unit)
 	if (unit != nullptr && (unit->getPlayer() == Broodwar->self() || unit->getPlayer()->isEnemy(Broodwar->self()))) {
 		log_unit_event("onUnitMorph", unit);
 	}
-	worker_manager.onUnitMorph(unit);
-	training_manager.onUnitMorph(unit);
 	auto unit_player = unit->getPlayer();
 	if (unit_player == Broodwar->self() || (unit_player != nullptr && unit_player->isEnemy(Broodwar->self()))) {
 		python_bridge.send_event("onUnitMorph", {
@@ -963,7 +891,6 @@ void ai_dc::onUnitRenegade(BWAPI::Unit unit)
 	if (unit != nullptr) {
 		log_unit_event("onUnitRenegade", unit);
 	}
-	worker_manager.onUnitLost(unit);
 }
 
 void ai_dc::onSaveGame(std::string gameName)
@@ -979,7 +906,6 @@ void ai_dc::onUnitComplete(BWAPI::Unit unit)
 	if (unit != nullptr && (unit->getPlayer() == Broodwar->self() || unit->getPlayer()->isEnemy(Broodwar->self()))) {
 		log_unit_event("onUnitComplete", unit);
 	}
-	training_manager.onUnitComplete(unit);
 	auto unit_player = unit->getPlayer();
 	if (unit_player == Broodwar->self() || (unit_player != nullptr && unit_player->isEnemy(Broodwar->self()))) {
 		bool own = (unit_player == Broodwar->self());
@@ -995,59 +921,16 @@ void ai_dc::onUnitComplete(BWAPI::Unit unit)
 
 void ai_dc::draw() {
 	draw_info();
-	base_state.draw();
-	information_manager.draw();
-	tactics_manager.draw();
-	micro_manager.draw();
-	building_placement_manager.draw();
-	worker_manager.draw_for_workers();
-	//room_grid.draw();
-	//threat_grid.draw(true);
 }
 
 void ai_dc::before()
 {
-	information_manager.update_units_and_buildings();
-	walkability_grid.update();
-	connectivity_grid.update();
-	base_state.update_base_information();
-	path_finder.close_small_chokepoints_if_needed();
-	unit_grid.update();
-	training_manager.init_unit_count_map();
-	building_manager.init_building_count_map();
-	building_manager.init_base_defense_map();
-	building_manager.init_upgrade_and_research();
-	building_manager.update_supply_requests();
-	information_manager.update_information();
-	tactics_manager.update();
-	opponent_model.update();
-	threat_grid.update();
-	micro_manager.prepare_combat();
-	worker_manager.before();
+	// Bridge-only mode: state managers disabled.
 }
 
 void ai_dc::after()
 {
-	spending_manager.init_spendable();
-	worker_manager.after();
-	
-	training_manager.update_overlord_training();
-	if (training_manager.worker_production() && !training_manager.worker_cut()) training_manager.apply_worker_train_orders();
-	building_manager.update_requested_building_count_for_pre_upgrade();
-	building_manager.apply_building_requests(true);
-    building_manager.apply_upgrades(true);
-	if (training_manager.prioritize_training()) training_manager.apply_train_orders();
-	building_manager.apply_building_requests(false);
-    building_manager.apply_upgrades(false);
-	building_manager.apply_research();
-	if (!training_manager.prioritize_training()) training_manager.apply_train_orders();
-	if (training_manager.worker_production() && training_manager.worker_cut()) training_manager.apply_worker_train_orders();
-	
-	building_manager.repair_damaged_buildings();
-	building_manager.continue_unfinished_buildings_without_worker();
-	worker_manager.apply_worker_orders();
-	micro_manager.apply_combat_orders();
-	building_manager.cancel_doomed_buildings();
+	// Bridge-only mode: macro/micro execution disabled.
 }
 
 void ai_dc::surrender_if_hope_lost()
@@ -1080,60 +963,18 @@ void ai_dc::surrender_if_hope_lost()
 
 void ai_dc::draw_info()
 {
+	if (!Broodwar->self()) return;
 	Broodwar->drawTextScreen(4, 26, "Time %s (frame %d)", frame_to_string(Broodwar->getFrameCount()).c_str(), Broodwar->getFrameCount());
-	Broodwar->drawTextScreen(4, 36, "Playing: %s vs %s on %s%s", Broodwar->self()->getRace().getName().c_str(), opponent_model.enemy_race().getName().c_str(), Broodwar->mapFileName().c_str(), base_state.is_island_map() ? " (island map)" : "");
-	Broodwar->drawTextScreen(4, 46, "Income: %d/%d ratio=%.1f",
-							 spending_manager.income_per_minute().minerals,
-							 spending_manager.income_per_minute().gas,
-							 (double)spending_manager.income_per_minute().minerals / (double)spending_manager.income_per_minute().gas);
-	Broodwar->drawTextScreen(4, 56, "Training: %.1f/%.1f/%.1f ratio=%.1f",
-							 spending_manager.training_cost_per_minute().minerals,
-							 spending_manager.training_cost_per_minute().gas,
-							 spending_manager.training_cost_per_minute().supply,
-							 spending_manager.training_cost_per_minute().minerals / spending_manager.training_cost_per_minute().gas);
-	Broodwar->drawTextScreen(4, 66, "Worker training: %.1f/%.1f/%.1f", spending_manager.worker_training_cost_per_minute().minerals, spending_manager.worker_training_cost_per_minute().gas, spending_manager.worker_training_cost_per_minute().supply);
-	Broodwar->drawTextScreen(4, 76, "Remainder: %d/%d", spending_manager.remainder().minerals, spending_manager.remainder().gas);
-	Broodwar->drawTextScreen(4, 86, "Spendable: %d/%d", spending_manager.spendable().minerals, spending_manager.spendable().gas);
-	Broodwar->drawTextScreen(4, 96, "Worker/Army supply: %g/%g opponent: %g/%g",
-							 tactics_manager.worker_supply() * 0.5, tactics_manager.army_supply() * 0.5,
-							 tactics_manager.enemy_worker_supply() * 0.5, tactics_manager.enemy_army_supply() * 0.5);
-	Broodwar->drawTextScreen(4, 106, "Enemy defense and offense supply: %g/%g",
-							 tactics_manager.enemy_defense_supply() * 0.5,
-							 tactics_manager.enemy_offense_supply() * 0.5);
-	Broodwar->drawTextScreen(4, 116, "Average #workers/mineral: %.1f, #mining bases: %d",
-							 worker_manager.average_workers_per_mineral(),
-							 base_state.mining_base_count());
-	if (Broodwar->self()->getRace() == Races::Protoss) {
-		Broodwar->drawTextScreen(4, 126, "Gateway distribution: Z %.2f, D %.2f, Ht %.2f, Dt %.2f",
-								 training_manager.gateway_train_distribution().get(UnitTypes::Protoss_Zealot),
-								 training_manager.gateway_train_distribution().get(UnitTypes::Protoss_Dragoon),
-								 training_manager.gateway_train_distribution().get(UnitTypes::Protoss_High_Templar),
-								 training_manager.gateway_train_distribution().get(UnitTypes::Protoss_Dark_Templar));
-	}
-	if (Broodwar->self()->getRace() == Races::Terran) {
-		Broodwar->drawTextScreen(4, 126, "Factory distribution: V %.2f, S %.2f, G %.2f",
-								 training_manager.factory_train_distribution().get(UnitTypes::Terran_Vulture),
-								 training_manager.factory_train_distribution().get(UnitTypes::Terran_Siege_Tank_Tank_Mode),
-								 training_manager.factory_train_distribution().get(UnitTypes::Terran_Goliath));
-	}
-	if (Broodwar->self()->getRace() == Races::Zerg) {
-		Broodwar->drawTextScreen(4, 126, "Larva distribution: D %.2f, O %.2f, Z %.2f, H %.2f, M %.2f S %.2f Df %.2f U %.2f",
-								 training_manager.larva_train_distribution().get(UnitTypes::Zerg_Drone),
-								 training_manager.larva_train_distribution().get(UnitTypes::Zerg_Overlord),
-								 training_manager.larva_train_distribution().get(UnitTypes::Zerg_Zergling),
-								 training_manager.larva_train_distribution().get(UnitTypes::Zerg_Hydralisk),
-								 training_manager.larva_train_distribution().get(UnitTypes::Zerg_Mutalisk),
-								 training_manager.larva_train_distribution().get(UnitTypes::Zerg_Scourge),
-								 training_manager.larva_train_distribution().get(UnitTypes::Zerg_Defiler),
-								 training_manager.larva_train_distribution().get(UnitTypes::Zerg_Ultralisk));
-	}
-	Broodwar->drawTextScreen(4, 136, "Mode: %s", strategy_->mode().c_str());
-	Broodwar->drawTextScreen(4, 146, "Opening: %s", strategy_->opening().c_str());
-	Broodwar->drawTextScreen(4, 156, "Late game strategy: %s", strategy_->late_game_strategy().c_str());
-	Broodwar->drawTextScreen(4, 166, "Enemy opening: %s", opponent_model.enemy_opening_info().c_str());
-	Broodwar->drawTextScreen(4, 176, "Lost workers/units: %d/%d",
-							 worker_manager.lost_worker_count(),
-							 training_manager.lost_unit_count());
+	Broodwar->drawTextScreen(4, 36, "Bridge-only mode (C++ strategy/state disabled)");
+	Broodwar->drawTextScreen(4, 46, "Race: %s  Manual: %s  Python: %s",
+		Broodwar->self()->getRace().getName().c_str(),
+		g_manual_mode ? "on" : "off",
+		g_python_mode ? "on" : "off");
+	Broodwar->drawTextScreen(4, 56, "Resources: M %d  G %d  Supply %d/%d",
+		Broodwar->self()->minerals(),
+		Broodwar->self()->gas(),
+		Broodwar->self()->supplyUsed(),
+		Broodwar->self()->supplyTotal());
 }
 
 PerformanceTimer::PerformanceTimer()

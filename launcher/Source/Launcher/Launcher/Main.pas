@@ -202,6 +202,18 @@ begin
   end;
 end;
 
+function IsWModePlugin(const Plugin:TPlugin):boolean;
+begin
+  result:=lowercase(extractfilename(Plugin.Filename))='wmode.bwl';
+end;
+
+function GetWModeIniPath(const Plugin:TPlugin):String;
+begin
+  if DirectoryExists(GamePath)
+    then result:=GamePath+'wmode.ini'
+    else result:=ExtractFilePath(Plugin.Filename)+'wmode.ini';
+end;
+
 procedure CheckGameVersions;
 begin
   if length(VersionData)=0 then raise exception.create(GameName+' is not properly installed. Go to the Settings tab of Chaoslauncher, and set the path to '+GameName);
@@ -439,8 +451,18 @@ begin
 end;
 
 procedure TChaoslauncherForm.ConfigClick(Sender: TObject);
+var WModeIniPath:String;
 begin
   if (Pluginlist.ItemIndex>high(PluginData))or(Pluginlist.ItemIndex<0) then exit;
+
+  if IsWModePlugin(PluginData[PluginList.itemindex]) and not PluginData[PluginList.itemindex].HasConfig then
+    begin
+      WModeIniPath:=GetWModeIniPath(PluginData[PluginList.itemindex]);
+      // W-MODE usually uses external INI configuration instead of OpenConfig API.
+      ShellExecute(0,'open','notepad.exe',PChar(WModeIniPath),nil,sw_normal);
+      exit;
+    end;
+
   PluginData[PluginList.itemindex].showconfig;
 end;
 
@@ -765,7 +787,8 @@ begin
   if plugindata[pluginlist.ItemIndex].Author<>''
     then PluginAuthor.caption:='by '+plugindata[pluginlist.ItemIndex].Author
     else PluginAuthor.caption:='';
-  Config.Enabled:=plugindata[pluginlist.ItemIndex].HasConfig;
+  Config.Enabled:=plugindata[pluginlist.ItemIndex].HasConfig
+               or IsWModePlugin(plugindata[pluginlist.ItemIndex]);
 
   Help.Enabled:=
         FileExists(Changefileext(plugindata[pluginlist.ItemIndex].Filename,'.txt'))
