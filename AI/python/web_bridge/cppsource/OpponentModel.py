@@ -143,3 +143,37 @@ class OpponentModel:
     def enemy_latest_expansion_frame(self) -> int:
         """Get latest expansion timing."""
         return max(self.expansion_frames_) if self.expansion_frames_ else -1
+    
+    def set_enemy_race(self, race: str) -> None:
+        """Set detected enemy race."""
+        self.enemy_race_ = race
+        if not self.race_known_:
+            self.initial_enemy_race_ = race
+            self.race_known_ = True
+    
+    def set_enemy_opening(self, opening: EnemyOpening) -> None:
+        """Set detected enemy opening."""
+        self.enemy_opening_ = opening
+    
+    def mark_unit_detected(self, unit_type: str, frame: int) -> None:
+        """Mark special unit detection."""
+        if unit_type == "dark_templar" and self.dark_templar_frame_ == -1:
+            self.dark_templar_frame_ = frame
+        elif unit_type == "mutalisk" and self.mutalisk_frame_ == -1:
+            self.mutalisk_frame_ = frame
+        elif unit_type == "lurker" and self.lurker_frame_ == -1:
+            self.lurker_frame_ = frame
+    
+    def mark_expansion(self, frame: int) -> None:
+        """Record expansion timing."""
+        if frame not in self.expansion_frames_:
+            self.expansion_frames_.append(frame)
+    
+    def mark_unit_capability(self, capability: str, present: bool = True) -> None:
+        """Mark enemy unit capabilities."""
+        if capability == "emp":
+            self.emp_seen_ = True
+        elif capability == "air_to_ground":
+            self.air_to_ground_present_ = present
+        elif capability == "cloaked":
+            self.cloaked_present_ = present

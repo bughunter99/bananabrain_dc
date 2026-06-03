@@ -13,45 +13,29 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, ClassVar, Dict, List, Optional, Tuple
 
+# Import from Micro module (where MicroManager is the full implementation)
+from cppsource.Micro import (
+    MicroManager as BaseMicroManager,
+    CombatState,
+    CombatUnitTarget,
+    SiegeTankState,
+    VultureState,
+    DragoonState,
+    UnstickState,
+    TentativeEffect,
+)
 
-@dataclass
-class MicroManager:
-    """Singleton for unit micromanagement."""
+
+class MicroManager(BaseMicroManager):
+    """Wrapper for base MicroManager providing unit-level micromanagement."""
     
-    _instance: ClassVar[Optional['MicroManager']] = None
-    
-    controlled_units_: Dict[int, Any] = field(default_factory=dict, init=False)
-    potential_field_: Optional[Any] = None
+    def __init__(self) -> None:
+        super().__init__()
     
     @classmethod
     def Instance(cls) -> 'MicroManager':
         """Get singleton instance."""
+        # Use parent's singleton pattern
         if cls._instance is None:
             cls._instance = cls()
         return cls._instance
-    
-    def frame(self) -> None:
-        """Execute micro decisions for current frame."""
-        for unit_id, unit in self.controlled_units_.items():
-            self._control_unit(unit)
-    
-    def _control_unit(self, unit: Any) -> None:
-        """Issue micro commands to a single unit."""
-        pass
-    
-    def _compute_potential_field(self, unit: Any) -> Tuple[int, int]:
-        """Compute desired movement direction using potential fields."""
-        return (0, 0)
-    
-    def add_unit(self, unit: Any) -> None:
-        """Add unit for micromanagement."""
-        self.controlled_units_[unit.get('id', 0)] = unit
-    
-    def remove_unit(self, unit_id: int) -> None:
-        """Remove unit from micromanagement."""
-        if unit_id in self.controlled_units_:
-            del self.controlled_units_[unit_id]
-    
-    def draw(self) -> None:
-        """Draw micro debug information."""
-        pass

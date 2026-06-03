@@ -29,13 +29,37 @@ class TrainingManager:
             cls._instance = cls()
         return cls._instance
     
-    def frame(self) -> None:
-        """Execute training decisions for current frame."""
-        pass
+    def init(self) -> None:
+        """Initialize training manager."""
+        self.training_queue_ = []
     
     def train_unit(self, unit_type: str) -> None:
         """Queue unit for training."""
-        pass
+        self.training_queue_.append({
+            "unit_type": unit_type,
+            "queued_frame": 0,
+            "started_frame": -1,
+        })
+    
+    def clear_queue(self) -> None:
+        """Clear training queue."""
+        self.training_queue_ = []
+    
+    def queue_size(self) -> int:
+        """Get number of units in training queue."""
+        return len(self.training_queue_)
+    
+    def queue(self) -> List[Dict]:
+        """Get current training queue."""
+        return list(self.training_queue_)
+    
+    def frame(self) -> None:
+        """Execute training decisions for current frame."""
+        if self.training_queue_:
+            # Process first item in queue
+            current = self.training_queue_[0]
+            if current.get("started_frame") == -1:
+                current["started_frame"] = 0  # Would be current frame in real implementation
     
     def draw(self) -> None:
         """Draw training debug information."""

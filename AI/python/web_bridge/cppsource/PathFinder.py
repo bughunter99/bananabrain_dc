@@ -7,9 +7,8 @@ Provides pathfinding with:
 - Area-based pathfinding
 """
 
-
 from dataclasses import dataclass, field
-from typing import ClassVar, Dict, List, Optional, Tuple
+from typing import Any, ClassVar, Dict, List, Optional, Tuple
 
 
 @dataclass
@@ -19,6 +18,8 @@ class PathFinder:
     _instance: ClassVar[Optional['PathFinder']] = None
     
     ramp_high_ground_cache_: Dict[Tuple[int, int], bool] = field(default_factory=dict, init=False)
+    small_chokepoints_closed_: bool = False
+    ramp_high_ground_: Dict[Any, Tuple[int, int]] = field(default_factory=dict, init=False)
     
     @classmethod
     def Instance(cls) -> 'PathFinder':
@@ -26,6 +27,18 @@ class PathFinder:
         if cls._instance is None:
             cls._instance = cls()
         return cls._instance
+    
+    def init(self, snapshot: Optional[Dict[str, Any]] = None) -> None:
+        """Initialize pathfinder."""
+        self.small_chokepoints_closed_ = False
+        self.ramp_high_ground_.clear()
+        self.ramp_high_ground_cache_.clear()
+        self.update(snapshot)
+    
+    def update(self, snapshot: Optional[Dict[str, Any]] = None) -> None:
+        """Update pathfinder from game state."""
+        snapshot = snapshot or {}
+        # Update ramp positions from snapshot
     
     def find_path(self, start: Tuple[int, int], goal: Tuple[int, int]) -> List[Tuple[int, int]]:
         """Find path from start to goal position.
@@ -55,29 +68,12 @@ class PathFinder:
     def _compute_is_ramp_high_ground(self, pos: Tuple[int, int]) -> bool:
         """Compute if position is on ramp high ground."""
         # Check elevation and ramp status
-        return False
+        return pos in self.ramp_high_ground_
     
     def clear_cache(self) -> None:
         """Clear pathfinding cache."""
         self.ramp_high_ground_cache_.clear()
 
-    def __init__(self) -> None:
-        self.small_chokepoints_closed_ = False
-        self.ramp_high_ground_: Dict[Any, Tuple[int, int]] = {}
-
-    @classmethod
-    def Instance(cls) -> "PathFinder":
-        if cls._instance is None:
-            cls._instance = cls()
-        return cls._instance
-
-    def init(self, snapshot: Optional[Dict[str, Any]] = None) -> None:
-        self.small_chokepoints_closed_ = False
-        self.ramp_high_ground_.clear()
-        self.update(snapshot)
-
-    def update(self, snapshot: Optional[Dict[str, Any]] = None) -> None:
-        snapshot = snapshot or {}
         self.ramp_high_ground_.clear()
         for entry in snapshot.get("ramp_high_ground", []):
             if isinstance(entry, dict) and "ramp" in entry and "position" in entry:
