@@ -9,9 +9,8 @@ Base class for race-specific strategies with:
 - Unit attack coordination
 """
 
-
 from dataclasses import dataclass, field
-from typing import ClassVar, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional
 from enum import Enum
 
 
@@ -24,167 +23,11 @@ class StageType(Enum):
     WALL = "wall"
 
 
-@dataclass
-class Strategy:
-    """Base strategy class for all races."""
-    
-    _mode: str = ""
-    _opening: str = ""
-    _late_game_strategy: str = ""
-    _stage_type: StageType = StageType.MINERALS
-    _stage_position: Tuple[int, int] = (0, 0)
-    _attacking: bool = False
-    _maxed_out: bool = False
-    
-    def pick_strategy(self, is_1v1: bool) -> None:
-        """Select strategy based on game conditions."""
-        pass
-    
-    def mode(self) -> str:
-        """Get current strategy mode."""
-        return self._mode
-    
-    def opening(self) -> str:
-        """Get opening strategy name."""
-        return self._opening
-    
-    def late_game_strategy(self) -> str:
-        """Get late game strategy name."""
-        return self._late_game_strategy
-    
-    def frame(self) -> None:
-        """Execute strategy frame logic."""
-        self.frame_inner()
-    
-    def frame_inner(self) -> None:
-        """Override in subclasses for strategy logic."""
-        pass
-    
-    def apply_result(self, win: bool) -> None:
-        """Record game result for strategy selection."""
-        pass
-    
-    def update_stage(self) -> None:
-        """Update stage (minerals, wall, proxy, etc)."""
-        pass
-    
-    def is_defending_rush(self) -> bool:
-        """Check if currently defending against rush."""
-        return False
-    
-    def is_contained(self) -> bool:
-        """Check if contained/blocked by opponent."""
-        return False
-    
-    def dark_templars_without_mobile_detection(self) -> bool:
-        """Check if opponent has DTs without mobile detection."""
-        return False
-    
-    def expect_lurkers(self) -> bool:
-        """Predict if opponent will use lurkers."""
-        return False
-    
-    def expect_dark_templars(self) -> bool:
-        """Predict if opponent will use dark templars."""
-        return False
-    
-    # Helper methods for opening implementations
-    
-    def opening_supply_count(self) -> int:
-        """Get current supply used in opening phase."""
-        from cppsource.BaseState import BaseState
-        base_state = BaseState.Instance()
-        # Supply is typically tracked by current unit count
-        # This would aggregate from all unit types currently trained
-        return 0  # Would be computed from unit counts
-    
-    def morphing_building_hp_at_least(self, unit_type: str, min_hp: int) -> bool:
-        """Check if building being morphed has at least min_hp."""
-        from cppsource.Information import InformationManager
-        info = InformationManager.Instance()
-        # Check if any building of this type is morphing with sufficient HP
-        return False  # Would check morphing buildings
-    
-    def done_or_in_progress(self, upgrade_type: str) -> bool:
-        """Check if upgrade is done or in progress."""
-        from cppsource.BuildingPlacement import BuildingPlacementManager
-        builder = BuildingPlacementManager.Instance()
-        # Check if upgrade is requested
-        return builder.is_upgrade_requested(upgrade_type)
-    
-    def attack_check_condition(self) -> None:
-        """Check if should continue/end attack."""
-        pass
-
-
-@dataclass
-class ProtossStrategy(Strategy):
-    """Protoss-specific strategy."""
-    
-    # Common PvZ openings
-    PVZ_SAIRDТ = "PvZ_sairdt"
-    PVZ_10_12_GATE = "PvZ_10/12gate"
-    PVZ_1BASE_SPEED_ZEAL = "PvZ_1basespeedzeal"
-    PVZ_2BASE_SPEED_ZEAL = "PvZ_2basespeedzeal"
-    PVZ_BISU = "PvZ_bisu"
-    
-    # Common PvT openings
-    PVT_2GATE = "PvT_2gate"
-    PVT_FFE = "PvT_ffe"
-    PVT_1012GATE = "PvT_10/12gate"
-    
-    # Common PvP openings
-    PVP_1GATE = "PvP_1gate"
-    PVP_2GATE = "PvP_2gate"
-    PVP_PROXY_GATE = "PvP_proxygate"
-
-
-@dataclass
-class TerranStrategy(Strategy):
-    """Terran-specific strategy."""
-    
-    # Common TvZ openings
-    TVZ_2RAXFE = "TvZ_2raxfe"
-    TVZ_1RAXFE = "TvZ_1raxfe"
-    TVZ_3RAX = "TvZ_3rax"
-    TVZ_WALL = "TvZ_wall"
-    
-    # Common TvT openings
-    TVT_STANDARD = "TvT_standard"
-    TVT_EXPAND = "TvT_expand"
-    
-    # Common TvP openings
-    TVP_2RAXFE = "TvP_2raxfe"
-    TVP_EXPAND = "TvP_expand"
-
-
-@dataclass
-class ZergStrategy(Strategy):
-    """Zerg-specific strategy."""
-    
-    # Common ZvP openings
-    ZVP_POOL = "ZvP_pool"
-    ZVP_HATCHERY = "ZvP_hatchery"
-    ZVP_MUTALISK = "ZvP_mutalisk"
-    
-    # Common ZvT openings
-    ZVT_POOL = "ZvT_pool"
-    ZVT_HATCHERY = "ZvT_hatchery"
-    ZVT_LING_FLOOD = "ZvT_lingflood"
-    
-    # Common ZvZ openings
-    ZVZ_POOL = "ZvZ_pool"
-    ZVZ_HATCHERY = "ZvZ_hatchery"
-
-
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
-
-
 CANONICAL_STRATEGY_UNITS = ["ProtossStrategy", "TerranStrategy", "ZergStrategy"]
 
 
 def normalize_strategy_unit_name(value: Any) -> str:
+    """Normalize strategy unit name."""
     text = str(value or "").strip()
     if not text or text.lower() == "auto":
         return "auto"
@@ -193,6 +36,7 @@ def normalize_strategy_unit_name(value: Any) -> str:
 
 @dataclass
 class StrategyDecision:
+    """Strategy decision output."""
     self_race: str = "Unknown"
     enemy_race: str = "Unknown"
     opening: str = "auto"
@@ -206,6 +50,7 @@ class StrategyDecision:
 
 @dataclass
 class StrategyContext:
+    """Context for strategy selection."""
     service: Any
     state: Dict[str, Any]
     payload: Dict[str, Any]
@@ -215,6 +60,8 @@ class StrategyContext:
 
 
 class Strategy:
+    """Base strategy class for all races."""
+
     def __init__(self, context: Optional[StrategyContext] = None) -> None:
         self._context = context
         self._opening = "auto"
@@ -225,11 +72,16 @@ class Strategy:
         self.enemy_race = "Unknown"
 
     def pick_strategy(self, is_1v1: bool) -> None:
+        """Select strategy based on game conditions."""
         if self._context is not None:
-            self.self_race = str(self._context.state.get("self_race") or self._context.payload.get("race") or "Unknown")
-            self.enemy_race = str(self._context.state.get("enemy_race") or self._context.payload.get("enemy_race") or "Unknown")
-            self._mode = str(self._context.state.get("strategy_mode") or self._context.payload.get("mode") or self._mode)
+            self.self_race = str(self._context.state.get("self_race") or 
+                                self._context.payload.get("race") or "Unknown")
+            self.enemy_race = str(self._context.state.get("enemy_race") or 
+                                 self._context.payload.get("enemy_race") or "Unknown")
+            self._mode = str(self._context.state.get("strategy_mode") or 
+                            self._context.payload.get("mode") or self._mode)
             self._opening = str(self._context.state.get("strategy_opening") or self._opening)
+        
         self._decision.self_race = self.self_race
         self._decision.enemy_race = self.enemy_race
         self._decision.opening = self._opening
@@ -237,15 +89,23 @@ class Strategy:
         self._decision.late_game_strategy = self._late_game_strategy
 
     def mode(self) -> str:
+        """Get current strategy mode."""
         return self._mode
 
     def opening(self) -> str:
+        """Get opening strategy name."""
         return self._opening
 
     def late_game_strategy(self) -> str:
+        """Get late game strategy name."""
         return self._late_game_strategy
 
+    def frame(self) -> None:
+        """Execute strategy frame logic."""
+        self.frame_inner()
+
     def frame_inner(self) -> None:
+        """Override in subclasses for strategy logic."""
         self._decision.self_race = self.self_race
         self._decision.enemy_race = self.enemy_race
         self._decision.opening = self._opening
@@ -256,14 +116,101 @@ class Strategy:
         self._decision.source = self.__class__.__name__
         self._decision.strategy_unit = self.__class__.__name__
 
+    def apply_result(self, win: bool) -> None:
+        """Record game result for strategy selection."""
+        pass
+
+    def update_stage(self) -> None:
+        """Update stage (minerals, wall, proxy, etc)."""
+        pass
+
+    def is_defending_rush(self) -> bool:
+        """Check if currently defending against rush."""
+        return False
+
+    def is_contained(self) -> bool:
+        """Check if contained/blocked by opponent."""
+        return False
+
+    def dark_templars_without_mobile_detection(self) -> bool:
+        """Check if opponent has DTs without mobile detection.
+        
+        C++ Logic:
+            return (information_manager.enemy_count(UnitTypes::Protoss_Dark_Templar) >= 1 &&
+                    !tactics_manager.mobile_detection_exists());
+        """
+        try:
+            from cppsource.Information import InformationManager
+            from cppsource.Tactics import TacticsManager
+            
+            info = InformationManager.Instance()
+            tactics = TacticsManager.Instance()
+            
+            # Check if enemy has at least 1 Dark Templar
+            dt_count = info.enemy_count("Protoss_Dark_Templar")
+            
+            # Check if we don't have mobile detection
+            has_mobile_detection = tactics.mobile_detection_exists()
+            
+            return dt_count >= 1 and not has_mobile_detection
+        except Exception:
+            return False
+
+    def expect_lurkers(self) -> bool:
+        """Predict if opponent will use lurkers.
+        
+        C++ Logic:
+            bool hydralisk_den_exists = information_manager.enemy_exists(UnitTypes::Zerg_Hydralisk_Den) 
+                                        || information_manager.enemy_seen(UnitTypes::Zerg_Hydralisk);
+            bool lair_or_hive_exists = information_manager.enemy_exists(UnitTypes::Zerg_Lair) 
+                                       || information_manager.enemy_exists(UnitTypes::Zerg_Hive);
+            return (hydralisk_den_exists && lair_or_hive_exists);
+        """
+        try:
+            from cppsource.Information import InformationManager
+            
+            info = InformationManager.Instance()
+            
+            # Check if enemy has Hydralisk Den or has seen Hydralisk
+            hydralisk_den_exists = (info.enemy_exists("Zerg_Hydralisk_Den") or 
+                                   info.enemy_seen("Zerg_Hydralisk"))
+            
+            # Check if enemy has Lair or Hive (lurkers require lair tech)
+            lair_or_hive_exists = (info.enemy_exists("Zerg_Lair") or 
+                                  info.enemy_exists("Zerg_Hive"))
+            
+            return hydralisk_den_exists and lair_or_hive_exists
+        except Exception:
+            return False
+
+    def expect_dark_templars(self) -> bool:
+        """Predict if opponent will use dark templars."""
+        try:
+            from cppsource.Information import InformationManager
+            
+            info = InformationManager.Instance()
+            
+            # Check if enemy has Templar Archives (dark templar tech)
+            has_templar_archives = info.enemy_exists("Protoss_Templar_Archives")
+            
+            # Or already has Dark Templars
+            has_dark_templars = info.enemy_count("Protoss_Dark_Templar") >= 1
+            
+            return has_templar_archives or has_dark_templars
+        except Exception:
+            return False
+
     def set_placement_plan(self, plan: Dict[str, Any]) -> None:
+        """Set building placement plan."""
         self._decision.placement_plan = dict(plan or {})
 
     def add_build_request(self, request: Dict[str, Any]) -> None:
+        """Add building request."""
         if request:
             self._decision.build_requests.append(dict(request))
 
     def _default_placement_plan(self) -> Dict[str, Any]:
+        """Get default placement plan."""
         return {
             "plan": "default",
             "expand_priority": "natural",
@@ -273,11 +220,32 @@ class Strategy:
         }
 
     def decision(self) -> StrategyDecision:
+        """Get current strategy decision."""
         return self._decision
 
 
 class ProtossStrategy(Strategy):
+    """Protoss-specific strategy."""
+
+    # Common PvZ openings
+    PVZ_SAIRDТ = "PvZ_sairdt"
+    PVZ_10_12_GATE = "PvZ_10/12gate"
+    PVZ_1BASE_SPEED_ZEAL = "PvZ_1basespeedzeal"
+    PVZ_2BASE_SPEED_ZEAL = "PvZ_2basespeedzeal"
+    PVZ_BISU = "PvZ_bisu"
+
+    # Common PvT openings
+    PVT_2GATE = "PvT_2gate"
+    PVT_FFE = "PvT_ffe"
+    PVT_1012GATE = "PvT_10/12gate"
+
+    # Common PvP openings
+    PVP_1GATE = "PvP_1gate"
+    PVP_2GATE = "PvP_2gate"
+    PVP_PROXY_GATE = "PvP_proxygate"
+
     def _default_placement_plan(self) -> Dict[str, Any]:
+        """Protoss default placement plan."""
         return {
             "plan": "protoss_default",
             "expand_priority": "natural",
@@ -288,7 +256,24 @@ class ProtossStrategy(Strategy):
 
 
 class TerranStrategy(Strategy):
+    """Terran-specific strategy."""
+
+    # Common TvZ openings
+    TVZ_2RAXFE = "TvZ_2raxfe"
+    TVZ_1RAXFE = "TvZ_1raxfe"
+    TVZ_3RAX = "TvZ_3rax"
+    TVZ_WALL = "TvZ_wall"
+
+    # Common TvT openings
+    TVT_STANDARD = "TvT_standard"
+    TVT_EXPAND = "TvT_expand"
+
+    # Common TvP openings
+    TVP_2RAXFE = "TvP_2raxfe"
+    TVP_EXPAND = "TvP_expand"
+
     def _default_placement_plan(self) -> Dict[str, Any]:
+        """Terran default placement plan."""
         return {
             "plan": "terran_default",
             "expand_priority": "natural",
@@ -299,7 +284,24 @@ class TerranStrategy(Strategy):
 
 
 class ZergStrategy(Strategy):
+    """Zerg-specific strategy."""
+
+    # Common ZvP openings
+    ZVP_POOL = "ZvP_pool"
+    ZVP_HATCHERY = "ZvP_hatchery"
+    ZVP_MUTALISK = "ZvP_mutalisk"
+
+    # Common ZvT openings
+    ZVT_POOL = "ZvT_pool"
+    ZVT_HATCHERY = "ZvT_hatchery"
+    ZVT_LING_FLOOD = "ZvT_lingflood"
+
+    # Common ZvZ openings
+    ZVZ_POOL = "ZvZ_pool"
+    ZVZ_HATCHERY = "ZvZ_hatchery"
+
     def _default_placement_plan(self) -> Dict[str, Any]:
+        """Zerg default placement plan."""
         return {
             "plan": "zerg_default",
             "expand_priority": "natural",
@@ -310,7 +312,10 @@ class ZergStrategy(Strategy):
 
 
 class StrategySelector:
+    """Select strategy implementation by name."""
+
     def select(self, context: StrategyContext) -> Strategy:
+        """Select strategy based on context."""
         strategy_name = normalize_strategy_unit_name(context.strategy_name)
         if strategy_name == "TerranStrategy":
             return TerranStrategy(context)

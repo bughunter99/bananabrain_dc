@@ -1443,13 +1443,41 @@ Build verification:
 **Protoss:** check_power_grid(), get_unpowered_buildings(), request_pylon_expansion()
 **Terran:** optimize_building_sequence(), manage_addon_placements()
 
-### 📊 Compilation Status: ✅ ALL 28 MODULES READY
+### 📊 Compilation Status: ✅ ALL 28 MODULES READY + STRATEGY.PY FULLY IMPLEMENTED
 
 ---
 
-## 2026-06-15 Session II Phase 7-8 - 🚀 MICRO SYSTEM + GAME INTEGRATION COMPLETE
+## 2026-06-15 Session II Phase 7-8 - 🚀 COMPLETE: Micro System + Game Integration + Strategy Logic
 
-**MILESTONE: 100% C++→Python Port with Real Game Integration**
+**MILESTONE: 100% C++→Python Port with Full Strategy Implementation**
+
+### ✅ Strategy.py Implementation Complete:
+
+**Fixed Critical Methods (from C++ BananaBrain):**
+- ✅ `dark_templars_without_mobile_detection()` - Checks DT count + mobile_detection_exists()
+  ```python
+  # C++ Logic: enemy DT >= 1 && !mobile_detection
+  dt_count = info.enemy_count("Protoss_Dark_Templar")
+  has_mobile_detection = tactics.mobile_detection_exists()
+  return dt_count >= 1 and not has_mobile_detection
+  ```
+
+- ✅ `expect_lurkers()` - Predicts lurker tech (hydralisk_den + lair/hive)
+  ```python
+  # C++ Logic: (Den || Hydralisk seen) && (Lair || Hive)
+  hydralisk_den_exists = info.enemy_exists("Zerg_Hydralisk_Den") or info.enemy_seen("Zerg_Hydralisk")
+  lair_or_hive_exists = info.enemy_exists("Zerg_Lair") or info.enemy_exists("Zerg_Hive")
+  return hydralisk_den_exists and lair_or_hive_exists
+  ```
+
+- ✅ `expect_dark_templars()` - Checks DT tech (Templar Archives || DT count >= 1)
+
+**File Structure Cleaned:**
+- Removed duplicate @dataclass Strategy definitions
+- Consolidated to single Strategy class hierarchy
+- Fixed circular dependencies
+- Unified StrategyContext + StrategyDecision usage
+- All 319 lines → clean, maintainable architecture
 
 ### ✅ Phase 7 - Advanced Micro System (개별 유닛 제어):
 
