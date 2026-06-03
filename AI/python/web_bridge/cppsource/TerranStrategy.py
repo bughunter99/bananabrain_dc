@@ -148,8 +148,19 @@ class TerranStrategy(Strategy):
         """Execute Terran strategy logic each frame."""
         # Handle opening phase
         if self.mode_ == TerranMode.OPENING:
+            # Route by opening selection
             if self._opening == kTvZ_Fantasy:
                 self.opening_TvZ_fantasy()
+            elif self._opening == kTvZ_14CC:
+                self.opening_TvZ_14CC()
+            elif self._opening == kTvP_1RaxFE:
+                self.opening_TvP_1RaxFE()
+            elif self._opening == kTvP_14CC:
+                self.opening_TvP_14CC()
+            elif self._opening == kTvT_2FactVults:
+                self.opening_TvT_2FactVults()
+            elif self._opening == kTvT_1FactFE:
+                self.opening_TvT_1FactFE()
             else:
                 self.update_stage()
         

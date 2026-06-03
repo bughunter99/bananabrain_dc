@@ -162,8 +162,19 @@ class ZergStrategy(Strategy):
         """Execute Zerg strategy logic each frame."""
         # Handle by opening during opening phase
         if self.mode_ == ZergMode.OPENING:
+            # Route by opening selection
             if self._opening == kZvZ_9PoolSpire:
                 self.opening_ZvZ_9poolspire()
+            elif self._opening == kZvZ_5Pool:
+                self.opening_ZvZ_5Pool()
+            elif self._opening == kZvT_2HatchMuta_12Hatch or self._opening == kZvT_2HatchMuta_12Pool:
+                self.opening_ZvT_2hatchmuta()
+            elif self._opening == kZvT_MutaHydra:
+                self.opening_ZvT_MutaHydra()
+            elif self._opening == kZvP_2HatchMuta:
+                self.opening_ZvP_2hatchmuta()
+            elif self._opening == kZvP_10HatchLing:
+                self.opening_ZvP_10Hatch()
             else:
                 self.update_stage()
         

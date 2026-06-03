@@ -124,8 +124,17 @@ class ProtossStrategy(Strategy):
         """Execute Protoss strategy logic each frame."""
         # Handle opening phase
         if self.mode_ == ProtossMode.OPENING:
+            # Route by opening selection
             if self._opening == kPvZ_SairDt:
                 self.opening_PvZ_SairDt()
+            elif self._opening == kPvZ_1012Gate:
+                self.opening_PvZ_10_12Gate()
+            elif self._opening == kPvT_FFE:
+                self.opening_PvT_FFE()
+            elif self._opening == kPvT_1012Gate:
+                self.opening_PvT_1012Gate()
+            elif self._opening == kPvP_1012Gate:
+                self.opening_PvP_1012Gate()
             else:
                 self.update_stage()
         
