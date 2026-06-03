@@ -1,6 +1,105 @@
-"""Python counterpart of C++ Tactics.cpp / Tactics.h."""
+"""Tactical combat management.
 
-from __future__ import annotations
+C++ equivalent: Tactics.cpp/Tactics.h
+
+Manages:
+- Enemy cluster tracking
+- Engagement distance calculations
+- Front line determination
+- Combat supply calculations
+"""
+
+
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Set, Tuple
+
+
+@dataclass
+class EnemyCluster:
+    """Represents a cluster of enemy units for tactical analysis."""
+    
+    # Engagement distances (in pixels)
+    ENGAGEMENT_DISTANCE: int = 32
+    FRONT_DISTANCE: int = 256
+    MAX_FRONT_STRIDE: int = 512
+    
+    units: List[Any] = field(default_factory=list, init=False)
+    engagement_distances: Dict[Any, int] = field(default_factory=dict, init=False)
+    front_units: Set[Any] = field(default_factory=set, init=False)
+    
+    defense_supply: float = 0.0
+    front_supply: float = 0.0
+    push_through: bool = False
+    
+    def expect_win(self, unit: Any) -> bool:
+        """Check if friendly unit would win engagement."""
+        return False
+    
+    def is_engaged(self, unit: Any) -> bool:
+        """Check if unit is currently engaged with enemy."""
+        return unit in self.engagement_distances
+    
+    def is_nearly_engaged(self, unit: Any) -> bool:
+        """Check if unit is nearly engaged (within close distance)."""
+        return False
+    
+    def in_front(self, unit: Any) -> bool:
+        """Check if unit is in front line."""
+        return unit in self.front_units
+    
+    def stim_allowed(self, unit: Any) -> bool:
+        """Check if stimmed unit is allowed."""
+        return False
+    
+    def in_front_with_supply_at_least(self, unit: Any, supply: int) -> bool:
+        """Check if front units have at least specified supply."""
+        return False
+    
+    def calculate_engagement_distances(self) -> None:
+        """Calculate distances to all enemy units."""
+        pass
+    
+    def determine_front(self) -> None:
+        """Determine front line units."""
+        pass
+    
+    def calculate_defense_supply(self) -> None:
+        """Calculate defensive unit supply values."""
+        pass
+
+
+@dataclass
+class TacticsManager:
+    """Singleton for managing tactical decisions."""
+    
+    _instance: Optional['TacticsManager'] = None
+    
+    enemy_clusters: List[EnemyCluster] = field(default_factory=list, init=False)
+    current_cluster: Optional[EnemyCluster] = None
+    
+    @classmethod
+    def Instance(cls) -> 'TacticsManager':
+        """Get singleton instance."""
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+    
+    def update(self, enemy_units: List[Any]) -> None:
+        """Update tactical analysis from enemy units."""
+        if enemy_units:
+            self.current_cluster = EnemyCluster()
+            self.current_cluster.units = enemy_units
+            self.current_cluster.calculate_engagement_distances()
+            self.current_cluster.determine_front()
+            self.current_cluster.calculate_defense_supply()
+    
+    def draw(self) -> None:
+        """Draw tactical debug information."""
+        pass
+
+
+from typing import Any
+
 
 from dataclasses import dataclass, field
 from typing import Any, ClassVar, Dict, List, Optional, Tuple

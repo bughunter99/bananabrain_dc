@@ -1,9 +1,176 @@
-"""Python counterpart of C++ Grids.cpp / Grids.h."""
+"""Grid systems for spatial indexing.
+
+C++ equivalent: Grids.cpp/Grids.h
+
+Implements three grid types:
+- TileGrid: 256x256 tile-based grid
+- WalkGrid: 4*256x4*256 walk-based grid
+- SparsePositionGrid: Sparse position-centered grid
+"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, ClassVar, Dict, List, Optional, Tuple
+from typing import Any, Generic, Optional, TypeVar
+
+T = TypeVar('T')
+
+MAP_WIDTH = 256
+MAP_HEIGHT = 256
+
+
+@dataclass
+class TileGrid(Generic[T]):
+    """Grid indexed by tile positions (256x256)."""
+    
+    data_: list = field(default_factory=lambda: [None] * (256 * 256), init=False)
+    
+    def clear(self, default_value: Optional[T] = None) -> None:
+        """Clear all grid values."""
+        self.data_ = [default_value] * (256 * 256)
+    
+    def get(self, x: int, y: int) -> Optional[T]:
+        """Get value at tile position."""
+        if 0 <= x < 256 and 0 <= y < 256:
+            return self.data_[y * 256 + x]
+        return None
+    
+    def set(self, x: int, y: int, value: T) -> None:
+        """Set value at tile position."""
+        if 0 <= x < 256 and 0 <= y < 256:
+            self.data_[y * 256 + x] = value
+    
+    def __getitem__(self, key: tuple) -> Optional[T]:
+        """Support grid[x, y] syntax."""
+        if isinstance(key, tuple):
+            return self.get(key[0], key[1])
+        return None
+    
+    def __setitem__(self, key: tuple, value: T) -> None:
+        """Support grid[x, y] = value syntax."""
+        if isinstance(key, tuple):
+            self.set(key[0], key[1], value)
+
+
+@dataclass
+class WalkGrid(Generic[T]):
+    """Grid indexed by walk positions (4*256 x 4*256)."""
+    
+    data_: list = field(default_factory=lambda: [None] * (4 * 256 * 4 * 256), init=False)
+    
+    def clear(self, default_value: Optional[T] = None) -> None:
+        """Clear all grid values."""
+        self.data_ = [default_value] * (4 * 256 * 4 * 256)
+    
+    def get(self, x: int, y: int) -> Optional[T]:
+        """Get value at walk position."""
+        if 0 <= x < 4 * 256 and 0 <= y < 4 * 256:
+            return self.data_[y * 4 * 256 + x]
+        return None
+    
+    def set(self, x: int, y: int, value: T) -> None:
+        """Set value at walk position."""
+        if 0 <= x < 4 * 256 and 0 <= y < 4 * 256:
+            self.data_[y * 4 * 256 + x] = value
+
+
+@dataclass
+class WalkabilityGrid:
+    """Grid tracking walkable positions."""
+    
+    data_: list = field(default_factory=lambda: [True] * (4 * 256 * 4 * 256), init=False)
+    
+    def is_walkable(self, x: int, y: int) -> bool:
+        """Check if position is walkable."""
+        if 0 <= x < 4 * 256 and 0 <= y < 4 * 256:
+            return self.data_[y * 4 * 256 + x]
+        return False
+    
+    def set_walkable(self, x: int, y: int, walkable: bool) -> None:
+        """Set walkability of position."""
+        if 0 <= x < 4 * 256 and 0 <= y < 4 * 256:
+            self.data_[y * 4 * 256 + x] = walkable
+
+
+@dataclass
+class ThreatGrid:
+    """Grid tracking threat levels from enemies."""
+    
+    data_: list = field(default_factory=lambda: [0.0] * (256 * 256), init=False)
+    
+    def get_threat(self, x: int, y: int) -> float:
+        """Get threat level at tile position."""
+        if 0 <= x < 256 and 0 <= y < 256:
+            return self.data_[y * 256 + x]
+        return 0.0
+    
+    def set_threat(self, x: int, y: int, threat: float) -> None:
+        """Set threat level at tile position."""
+        if 0 <= x < 256 and 0 <= y < 256:
+            self.data_[y * 256 + x] = threat
+    
+    def update(self) -> None:
+        """Update threat grid from enemy positions."""
+        pass
+
+
+@dataclass
+class UnitGrid:
+    """Grid tracking unit positions for spatial lookup."""
+    
+    data_: list = field(default_factory=lambda: [[] for _ in range(256 * 256)], init=False)
+    
+    def clear(self) -> None:
+        """Clear all unit positions."""
+        self.data_ = [[] for _ in range(256 * 256)]
+    
+    def add_unit(self, x: int, y: int, unit: Any) -> None:
+        """Add unit at tile position."""
+        if 0 <= x < 256 and 0 <= y < 256:
+            self.data_[y * 256 + x].append(unit)
+    
+    def get_units(self, x: int, y: int) -> list:
+        """Get units at tile position."""
+        if 0 <= x < 256 and 0 <= y < 256:
+            return self.data_[y * 256 + x]
+        return []
+
+
+@dataclass
+class RoomGrid:
+    """Grid tracking room/area connectivity."""
+    
+    data_: list = field(default_factory=lambda: [None] * (256 * 256), init=False)
+    
+    def get_room(self, x: int, y: int) -> Optional[Any]:
+        """Get room/area at tile position."""
+        if 0 <= x < 256 and 0 <= y < 256:
+            return self.data_[y * 256 + x]
+        return None
+    
+    def set_room(self, x: int, y: int, room: Any) -> None:
+        """Set room/area at tile position."""
+        if 0 <= x < 256 and 0 <= y < 256:
+            self.data_[y * 256 + x] = room
+    
+    def invalidate(self) -> None:
+        """Invalidate room grid (requires recalculation)."""
+        pass
+
+
+# Global grid singletons
+walkability_grid: Optional[WalkabilityGrid] = None
+threat_grid: Optional[ThreatGrid] = None
+unit_grid: Optional[UnitGrid] = None
+room_grid: Optional[RoomGrid] = None
+
+def init_grids() -> None:
+    """Initialize all grid singletons."""
+    global walkability_grid, threat_grid, unit_grid, room_grid
+    walkability_grid = WalkabilityGrid()
+    threat_grid = ThreatGrid()
+    unit_grid = UnitGrid()
+    room_grid = RoomGrid()
 
 
 class TileGrid:

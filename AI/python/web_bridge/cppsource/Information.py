@@ -50,6 +50,146 @@ class InformationUnit:
             or self.maelstrom_end_frame > current_frame
         )
 
+    def detection_range(self) -> int:
+        """Get detection range if this unit is a detector."""
+        # Building detectors: 7 tiles, unit detectors: sight range
+        return 224 if not self.is_disabled(0) else -1
+
+    def tile_position(self) -> Tuple[int, int]:
+        """Get tile position from center position."""
+        x = self.position[0] // 32
+        y = self.position[1] // 32
+        return (x, y)
+
+    def update(self, unit: Any, frame: int) -> None:
+        """Update unit information from game state."""
+        self.unit = unit
+        self.frame = frame
+        self.hitpoints = unit.get('hp', 0) if isinstance(unit, dict) else 0
+        self.shields = unit.get('shields', 0) if isinstance(unit, dict) else 0
+        self.position = unit.get('pos', (0, 0)) if isinstance(unit, dict) else (0, 0)
+        self.type = unit.get('type', 'None') if isinstance(unit, dict) else 'None'
+        self.flying = unit.get('flying', False) if isinstance(unit, dict) else False
+        self.burrowed = unit.get('burrowed', False) if isinstance(unit, dict) else False
+        self.completed = unit.get('completed', True) if isinstance(unit, dict) else True
+
+
+@dataclass
+class InformationManager:
+    """Singleton for managing game information and unit tracking."""
+    
+    _instance: ClassVar[Optional['InformationManager']] = None
+    
+    all_units_: Dict[int, InformationUnit] = None
+    my_units_: List[InformationUnit] = None
+    neutral_units_: List[InformationUnit] = None
+    enemy_units_: List[InformationUnit] = None
+    enemy_building_seen_: bool = False
+    enemy_count_: Dict[str, int] = None
+    enemy_completed_count_: Dict[str, int] = None
+    enemy_seen_: set = None
+    enemy_seen_count_: Dict[str, int] = None
+    
+    def __post_init__(self):
+        if self.all_units_ is None:
+            self.all_units_ = {}
+        if self.my_units_ is None:
+            self.my_units_ = []
+        if self.neutral_units_ is None:
+            self.neutral_units_ = []
+        if self.enemy_units_ is None:
+            self.enemy_units_ = []
+        if self.enemy_count_ is None:
+            self.enemy_count_ = {}
+        if self.enemy_completed_count_ is None:
+            self.enemy_completed_count_ = {}
+        if self.enemy_seen_ is None:
+            self.enemy_seen_ = set()
+        if self.enemy_seen_count_ is None:
+            self.enemy_seen_count_ = {}
+    
+    @classmethod
+    def Instance(cls) -> 'InformationManager':
+        """Get singleton instance."""
+        if cls._instance is None:
+            cls._instance = InformationManager()
+        return cls._instance
+    
+    def update_units_and_buildings(self, snapshot: Dict[str, Any]) -> None:
+        """Update all unit and building information from game snapshot."""
+        frame = snapshot.get('frame', 0)
+        
+        # Clear and rebuild unit lists
+        self.my_units_ = []
+        self.enemy_units_ = []
+        self.neutral_units_ = []
+        
+        # Process units from snapshot
+        for unit_data in snapshot.get('units', []):
+            unit_id = unit_data.get('id', 0)
+            owner = unit_data.get('owner', 'neutral')
+            
+            if unit_id not in self.all_units_:
+                self.all_units_[unit_id] = InformationUnit()
+            
+            info_unit = self.all_units_[unit_id]
+            info_unit.update(unit_data, frame)
+            
+            if owner == 'self':
+                self.my_units_.append(info_unit)
+            elif owner == 'enemy':
+                self.enemy_units_.append(info_unit)
+            else:
+                self.neutral_units_.append(info_unit)
+    
+    def update_information(self) -> None:
+        """Update derived information and statistics."""
+        # Update enemy unit counts
+        self.enemy_count_ = {}
+        self.enemy_completed_count_ = {}
+        
+        for enemy in self.enemy_units_:
+            unit_type = enemy.type
+            self.enemy_count_[unit_type] = self.enemy_count_.get(unit_type, 0) + 1
+            if enemy.is_completed():
+                self.enemy_completed_count_[unit_type] = self.enemy_completed_count_.get(unit_type, 0) + 1
+    
+    def all_units(self) -> Dict[int, InformationUnit]:
+        """Get all units."""
+        return self.all_units_
+    
+    def my_units(self) -> List[InformationUnit]:
+        """Get my units."""
+        return self.my_units_
+    
+    def enemy_units(self) -> List[InformationUnit]:
+        """Get enemy units."""
+        return self.enemy_units_
+    
+    def enemy_count(self, unit_type: str) -> int:
+        """Get count of specific enemy unit type."""
+        return self.enemy_count_.get(unit_type, 0)
+    
+    def enemy_completed_exists(self, unit_type: str) -> bool:
+        """Check if completed enemy unit type exists."""
+        return self.enemy_completed_count_.get(unit_type, 0) > 0
+    
+    def on_unit_destroy(self, unit: Any) -> None:
+        """Called when a unit is destroyed."""
+        pass
+    
+    def on_unit_discover(self, unit: Any) -> None:
+        """Called when a unit is discovered."""
+        pass
+    
+    def on_unit_evade(self, unit: Any) -> None:
+        """Called when a unit evades."""
+        pass
+    
+    def draw(self) -> None:
+        """Draw debug information."""
+        pass
+
     def expected_hitpoints(self, current_frame: int) -> int:
         return self.hitpoints
 

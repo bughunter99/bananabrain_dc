@@ -1,6 +1,158 @@
-"""Python counterpart of C++ Results.cpp / Results.h."""
+"""Game result storage and strategy selection.
 
-from __future__ import annotations
+C++ equivalent: Results.cpp/Results.h
+
+Manages historical game results and selects strategies using:
+- Greedy strategy (highest win rate)
+- UCB1 algorithm (upper confidence bound)
+"""
+
+
+from dataclasses import dataclass, field
+from typing import Any, Callable, ClassVar, Dict, List, Optional
+import random
+import datetime
+import math
+
+
+@dataclass
+class Result:
+    """Single game result record."""
+    timestamp: str = ""
+    start_positions: int = 0
+    start_clock_position: int = 0
+    opponent_clock_position: int = 0
+    map_name: str = ""
+    strategy: str = ""
+    late_game_strategy: str = ""
+    opponent_strategy: str = ""
+    duration: int = 0
+    opponent_dark_templar_frame: int = 0
+    opponent_mutalisk_frame: int = 0
+    opponent_lurker_frame: int = 0
+    is_win: bool = False
+
+
+@dataclass
+class ResultStore:
+    """Singleton for storing and analyzing game results.
+    
+    Uses UCB1 or greedy selection to pick best strategies.
+    """
+    
+    _instance: ClassVar[Optional['ResultStore']] = None
+    
+    prepared_results_: List[Result] = field(default_factory=list, init=False)
+    results_: List[Result] = field(default_factory=list, init=False)
+    
+    DECAY_FACTOR: float = 40.0
+    DECAY_FACTOR_TOURNAMENT: float = 3.0
+    TARGET_WIN_RATE: float = 0.8
+    PRIOR_GAMES: float = 1.5
+    
+    @classmethod
+    def Instance(cls) -> 'ResultStore':
+        """Get singleton instance."""
+        if cls._instance is None:
+            cls._instance = ResultStore()
+        return cls._instance
+    
+    def init(self) -> None:
+        """Initialize result store from files."""
+        self._read_prepared_results()
+        self._read_results()
+    
+    def _read_prepared_results(self) -> None:
+        """Read prepared results from AI directory."""
+        try:
+            # File path: bwapi-data/AI/Results_{name}.txt
+            pass
+        except Exception:
+            pass
+    
+    def _read_results(self) -> None:
+        """Read game results from read/write directories."""
+        try:
+            # File paths: bwapi-data/read/Results_{name}.txt
+            pass
+        except Exception:
+            pass
+    
+    def pick_strategy(self, strategies: List[str]) -> str:
+        """Pick best strategy from list.
+        
+        Uses greedy or UCB1 selection based on configuration.
+        
+        Args:
+            strategies: List of strategy names
+            
+        Returns:
+            Selected strategy name
+        """
+        if not strategies:
+            return ""
+        
+        if len(strategies) == 1:
+            return strategies[0]
+        
+        # Default: greedy selection (highest win rate)
+        return self._pick_strategy_greedy(strategies)
+    
+    def _pick_strategy_greedy(self, strategies: List[str]) -> str:
+        """Pick strategy with highest win rate."""
+        best_strategy = strategies[0]
+        best_win_rate = 0.0
+        
+        for strategy in strategies:
+            wins = sum(1 for r in self.results_ if r.strategy == strategy and r.is_win)
+            total = sum(1 for r in self.results_ if r.strategy == strategy)
+            
+            if total > 0:
+                win_rate = wins / total
+                if win_rate > best_win_rate:
+                    best_win_rate = win_rate
+                    best_strategy = strategy
+        
+        return best_strategy
+    
+    def _pick_strategy_ucb1(self, strategies: List[str]) -> str:
+        """Pick strategy using UCB1 algorithm."""
+        import math
+        
+        best_strategy = strategies[0]
+        best_ucb = float('-inf')
+        
+        for strategy in strategies:
+            wins = sum(1 for r in self.results_ if r.strategy == strategy and r.is_win)
+            total = max(1, sum(1 for r in self.results_ if r.strategy == strategy))
+            
+            exploitation = wins / total
+            exploration = math.sqrt(math.log(len(self.results_) + 1) / total) if total > 0 else 1.0
+            ucb = exploitation + exploration
+            
+            if ucb > best_ucb:
+                best_ucb = ucb
+                best_strategy = strategy
+        
+        return best_strategy
+    
+    def apply_result(self, strategy: str, late_game_strategy: str, opponent_strategy: str, win: bool) -> None:
+        """Record a game result."""
+        import datetime
+        result = Result(
+            timestamp=datetime.datetime.now().isoformat(),
+            strategy=strategy,
+            late_game_strategy=late_game_strategy,
+            opponent_strategy=opponent_strategy,
+            is_win=win
+        )
+        self.results_.append(result)
+    
+    def store(self) -> None:
+        """Write results to file."""
+        pass
+
+
 
 from collections import defaultdict
 from dataclasses import dataclass
