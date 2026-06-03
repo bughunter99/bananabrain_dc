@@ -150,6 +150,34 @@ class CombatWorkerOrder(WorkerOrder):
         return True
 
 
+class WorkerManager:
+    """Singleton for worker management."""
+    
+    _instance: ClassVar[Optional['WorkerManager']] = None
+    
+    def __init__(self) -> None:
+        self.force_refinery_workers_ = False
+    
+    @classmethod
+    def Instance(cls) -> 'WorkerManager':
+        """Get singleton instance."""
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+    
+    def init(self) -> None:
+        """Initialize worker manager."""
+        self.force_refinery_workers_ = False
+    
+    def set_force_refinery_workers(self, force: bool) -> None:
+        """Force workers to gas refineries."""
+        self.force_refinery_workers_ = force
+    
+    def is_force_refinery_workers(self) -> bool:
+        """Check if forcing workers to gas."""
+        return self.force_refinery_workers_
+
+
 class ContinueBuildWorkerOrder(WorkerOrder):
     def __init__(self, worker: "Worker", building: Any) -> None:
         super().__init__(worker)

@@ -170,10 +170,25 @@ class ZergStrategy(Strategy):
         pass
     
     def opening_ZvZ_9poolspire(self) -> None:
-        """Handle ZvZ 9 pool spire opening."""
+        """Handle ZvZ 9 pool spire opening.
+        
+        C++ equivalent: void ZergStrategy::opening_ZvZ_9poolspire()
+        
+        Complete opening sequence:
+        1. Check opponent for fast pool defense
+        2. Request pool, extractor, lair, spire in sequence
+        3. Train overlords, zerglings, mutalisks
+        4. Upgrade speed, transition to main
+        """
         from cppsource.OpponentModel import OpponentModel
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        from cppsource.TrainingManager import TrainingManager
+        from cppsource.Worker import WorkerManager
         
         opponent_model = OpponentModel.Instance()
+        building_manager = BuildingPlacementManager.Instance()
+        training_manager = TrainingManager.Instance()
+        worker_manager = WorkerManager.Instance()
         
         # Check for fast pool defense
         if opponent_model.enemy_opening() == "Z_4_5Pool":
@@ -182,13 +197,101 @@ class ZergStrategy(Strategy):
             return
         
         # Transition to main if needed
-        if self.is_enemy_offense_larger_than_defense() or self.opening_lost_too_many_workers():
+        if (self.is_enemy_offense_larger_than_defense() or
+            self.opening_lost_too_many_workers() or
+            building_manager.building_placement_failed()):
             self.mode_ = ZergMode.MAIN_ZVZ
             return
         
-        # Start attack with zerglings
-        if self.attacking_:
+        # Check if Spire should save larvae
+        save_larvae = self.morphing_building_hp_at_least("Zerg_Spire", 350)
+        
+        # Get current supply
+        supply = self.opening_supply_count()
+        
+        # === SUPPLY 9: Request Pool ===
+        if supply >= 9:
+            building_manager.set_requested_building_count_at_least("Zerg_Spawning_Pool", 1)
+        
+        # === SUPPLY 9: Request Extractor (need Pool) ===
+        if (supply >= 9 and 
+            building_manager.building_count_including_planned("Zerg_Spawning_Pool") >= 1):
+            building_manager.set_requested_building_count_at_least("Zerg_Extractor", 1)
+        
+        # === SUPPLY 8: Train Overlord #2 (need Extractor) ===
+        if (supply >= 8 and
+            building_manager.building_count_including_planned("Zerg_Extractor") >= 1 and
+            training_manager.unit_count("Zerg_Overlord") < 2):
+            training_manager.larva_train_distribution().set("Zerg_Overlord", 1.0)
+        
+        # === Train Zerglings (need Pool, Pool must exist) ===
+        if (building_manager.building_exists("Zerg_Spawning_Pool") and
+            not save_larvae and
+            training_manager.unit_count("Zerg_Zergling") < 6):
+            training_manager.larva_train_distribution().set("Zerg_Zergling", 1.0)
+        
+        # === Force refinery workers (need Extractor) ===
+        if (building_manager.building_exists("Zerg_Extractor") and
+            training_manager.unit_count("Zerg_Drone") >= 8):
+            worker_manager.set_force_refinery_workers(True)
+        
+        # === Request Metabolic Boost (need 6 Zerglings) ===
+        if (building_manager.building_exists("Zerg_Spawning_Pool") and
+            training_manager.unit_count("Zerg_Zergling") >= 6):
+            building_manager.request_upgrade("Metabolic_Boost")
+        
+        # === After Metabolic Boost ===
+        if self.done_or_in_progress("Metabolic_Boost"):
+            # Continue Zerglings or start Lair
+            if (not save_larvae and
+                training_manager.unit_count("Zerg_Zergling") < 8):
+                training_manager.larva_train_distribution().set("Zerg_Zergling", 1.0)
+            else:
+                building_manager.set_requested_building_count_at_least("Zerg_Lair", 1)
+        
+        # === Train more Zerglings (need Lair) ===
+        if (building_manager.building_count_including_planned("Zerg_Lair") >= 1 and
+            not save_larvae and
+            training_manager.unit_count("Zerg_Zergling") < 14):
+            training_manager.larva_train_distribution().set("Zerg_Zergling", 1.0)
+        
+        # === Request Spire (need Lair + Metabolic Boost) ===
+        if (self.done_or_in_progress("Metabolic_Boost") and
+            building_manager.building_exists("Zerg_Lair")):
+            building_manager.set_requested_building_count_at_least("Zerg_Spire", 1)
+        
+        # === SUPPLY 16: Train Overlord #3 ===
+        if supply >= 16 and training_manager.unit_count("Zerg_Overlord") < 3:
+            training_manager.larva_train_distribution().set("Zerg_Overlord", 1.0)
+        
+        # === Train Mutalisks (need Spire + 3 Overlords) ===
+        if (building_manager.building_exists("Zerg_Spire") and
+            training_manager.unit_count("Zerg_Overlord") >= 3 and
+            training_manager.unit_count("Zerg_Mutalisk") < 3):
+            training_manager.larva_train_distribution().clear()
+            training_manager.larva_train_distribution().set("Zerg_Mutalisk", 1.0)
+        
+        # === Transition to Main (3 Mutalisks + attack started) ===
+        if (self.opening_attack_started_ and
+            training_manager.unit_count("Zerg_Mutalisk") >= 3):
+            self.mode_ = ZergMode.MAIN_ZVZ
+            return
+        
+        # === Start attack with 2 Zerglings ===
+        if (training_manager.unit_count("Zerg_Zergling") >= 2 and
+            not self.opening_attack_started_):
+            self.attacking_ = True
+            self.opening_attack_started_ = True
+        
+        # === Continue attack check ===
+        if self.opening_attack_started_:
             self.attack_check_condition()
+        
+        # === Train replacement Drones ===
+        if (not save_larvae and
+            training_manager.unit_count("Zerg_Drone") < 9 and
+            training_manager.larva_train_distribution().is_empty()):
+            training_manager.larva_train_distribution().set("Zerg_Drone", 1.0)
     
     def is_enemy_offense_larger_than_defense(self) -> bool:
         """Check if enemy has overwhelming offense."""

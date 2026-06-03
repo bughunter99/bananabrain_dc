@@ -87,6 +87,34 @@ class Strategy:
     def expect_dark_templars(self) -> bool:
         """Predict if opponent will use dark templars."""
         return False
+    
+    # Helper methods for opening implementations
+    
+    def opening_supply_count(self) -> int:
+        """Get current supply used in opening phase."""
+        from cppsource.BaseState import BaseState
+        base_state = BaseState.Instance()
+        # Supply is typically tracked by current unit count
+        # This would aggregate from all unit types currently trained
+        return 0  # Would be computed from unit counts
+    
+    def morphing_building_hp_at_least(self, unit_type: str, min_hp: int) -> bool:
+        """Check if building being morphed has at least min_hp."""
+        from cppsource.Information import InformationManager
+        info = InformationManager.Instance()
+        # Check if any building of this type is morphing with sufficient HP
+        return False  # Would check morphing buildings
+    
+    def done_or_in_progress(self, upgrade_type: str) -> bool:
+        """Check if upgrade is done or in progress."""
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        builder = BuildingPlacementManager.Instance()
+        # Check if upgrade is requested
+        return builder.is_upgrade_requested(upgrade_type)
+    
+    def attack_check_condition(self) -> None:
+        """Check if should continue/end attack."""
+        pass
 
 
 @dataclass
