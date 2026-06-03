@@ -118,6 +118,47 @@ This Django service runs inside the ai_dc2 repository and connects to the BWAPI 
    - per-kind clear and clear-all actions
 - Opening catalog now reports implementation status (implemented vs template) for UI display.
 
+## Progress Notes (2026-06-03, information cache parity)
+- `cppsource/Information.py` now keeps persistent unit records by id, tracks last-seen frame, completed state, owner hints, and enemy upgrade lookup.
+- `brain.py` now refreshes `InformationManager` from the live bridge snapshot at the start of each frame.
+- Verified with `python -m py_compile` for the touched Python files.
+
+## Progress Notes (2026-06-03, macro request wiring)
+- `cppsource/Worker.py` now has concrete scout/wait/block worker orders instead of pure placeholders.
+- `cppsource/Macro.py` now derives next-base requests from `BaseState` and uses snapshot supply data to toggle automatic supply behavior.
+- Verified with `python -m py_compile` for the touched Python files.
+
+## Progress Notes (2026-06-03, placement planner fallback)
+- `cppsource/BuildingPlacement.py` now exposes a singleton planner with a default placement policy derived from `BaseState` and matchup context.
+- `brain.py` now falls back to the placement planner when a strategy does not emit its own placement plan.
+- Verified with `python -m py_compile` for the touched Python files.
+
+## Progress Notes (2026-06-03, bridge wrapper state)
+- `cppsource/Dll.py` now exposes a minimal state and message-queue bridge instead of a stub.
+- Verified with `python -m py_compile` for the touched Python files.
+
+## Progress Notes (2026-06-03, final stub sweep)
+- Filled the remaining placeholder classes in `Micro.py`, `FastPosition.py`, `BananaBrain.py`, `UnitPotential.py`, `WallPlacement.py`, `UnitUtils.py`, `Utils.py`, `Grids.py`, and `Worker.py`.
+- `OpponentModel.py`, `PathFinder.py`, and `brain.py` now participate in the per-frame refresh path alongside `InformationManager`, `TacticsManager`, and `BuildingPlacementManager`.
+- Verified with `python -m py_compile` for the touched Python files; the `cppsource` mirror package no longer has obvious `pass` stubs.
+
+## Progress Notes (2026-06-03, receive-text bridge)
+- `Source/ai_dc2.cpp` now forwards BWAPI `onReceiveText` callbacks into the ZMQ bridge as `onReceiveText` events.
+- `AI/python/web_bridge/brain.py` now consumes `onReceiveText` events and exposes a default `onReceiveText(player, text)` hook that records the received chat text in runtime state.
+
+## Progress Notes (2026-06-03, callback surface expansion)
+- `AI/python/web_bridge/brain.py` now exposes the remaining BananaBrain-style callbacks (`onStart`, `onEnd`, `onFrame`, `onSendText`, `onPlayerLeft`, `onNukeDetect`, `onUnitDiscover`, `onUnitEvade`, `onUnitShow`, `onUnitHide`, `onUnitCreate`, `onUnitDestroy`, `onUnitMorph`, `onUnitRenegade`, `onSaveGame`, and `onUnitComplete`).
+- `Source/ai_dc2.cpp` now forwards the remaining BWAPI callback events into the bridge so Python can react to them through the same callback names.
+- `bridgeui/bridge.py` now records the last invoked callback so the bridge snapshot shows the new message flow.
+
+## Progress Notes (2026-06-03, onStart parity)
+- `AI/python/web_bridge/brain.py` now implements `onStart()` directly with BananaBrain-style startup initialization instead of forwarding through `_emit_callback()`.
+
+## Progress Notes (2026-06-03, config and loader hardening)
+- `cppsource/Configuration.py` now exposes snapshot updates and a serializable state view.
+- `cppsource/Results.py` now supports result merging, reset, and best-opening lookup.
+- `cppsource/OpeningLoader.py` now scans and reloads mirrored opening modules when present.
+
 ## Progress Notes (2026-06-02, tab UI + strategy file apply)
 - Dashboard now uses tabs:
    - `Control`

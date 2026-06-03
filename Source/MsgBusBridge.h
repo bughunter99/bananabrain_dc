@@ -2,7 +2,9 @@
 
 #include <BWAPI.h>
 #include <cstdint>
+#include <deque>
 #include <map>
+#include <mutex>
 #include <string>
 
 class MsgBusBridge
@@ -22,6 +24,8 @@ public:
   void send_raw_event(const std::string& event_name,
                       const std::string& raw_payload_json);
   void poll_actions();
+  void flush_pending_events();
+  void process_pending_actions();
 
   static std::string escape_json(const std::string& s);
 
@@ -35,11 +39,17 @@ private:
   uintptr_t send_sock_ = ~uintptr_t(0);
   uintptr_t recv_sock_ = ~uintptr_t(0);
   char agent_addr_[16] = {};
+  std::mutex queue_mutex_;
+  std::deque<std::string> pending_event_packets_;
+  std::deque<std::string> pending_action_packets_;
 
   static std::string payload_to_json(const std::map<std::string, std::string>& payload);
   static std::string build_message(const std::string& event_name,
                                    int frame,
                                    const std::string& payload_json);
+
+  void enqueue_event_packet(const std::string& packet);
+  void enqueue_action_packet(const std::string& packet);
 
   void apply_action_json(const std::string& json);
   void apply_action_object(const std::string& type,

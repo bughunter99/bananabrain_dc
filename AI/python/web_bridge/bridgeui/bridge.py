@@ -27,9 +27,11 @@ class UdpBridgeService:
         self._lock = threading.Lock()
         self._running = False
         self._listener_thread = None  # type: Optional[threading.Thread]
+        self._sender_thread = None  # type: Optional[threading.Thread]
         self._recv_sock = None  # type: Optional[socket.socket]
         self._send_sock = None  # type: Optional[socket.socket]
         self._recent_events = deque(maxlen=MAX_RECENT_EVENTS)  # type: Deque[Dict[str, Any]]
+        self._action_queue = queue.Queue()  # type: queue.Queue
         self._state = {  # type: Dict[str, Any]
             "status": "idle",
             "connected": False,
@@ -60,6 +62,16 @@ class UdpBridgeService:
             "last_action": None,
             "last_strategy_command": None,
             "last_placement_policy": None,
+            "last_receive_player": None,
+            "last_receive_text": None,
+            "last_callback_name": None,
+            "last_callback_payload": None,
+            "last_send_text": None,
+            "last_player_left": None,
+            "last_nuke_target": None,
+            "last_save_game": None,
+            "last_unit_event": None,
+            "last_unit_payload": None,
             "last_error": None,
             "policy_running": False,
             "strategy_opening": None,
@@ -80,6 +92,8 @@ class UdpBridgeService:
             self._send_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self._listener_thread = threading.Thread(target=self._listen_loop, daemon=True, name="UdpBridgeService")
             self._listener_thread.start()
+            self._sender_thread = threading.Thread(target=self._send_loop, daemon=True, name="UdpBridgeSender")
+            self._sender_thread.start()
 
     def stop_listener(self) -> None:
         with self._lock:
@@ -96,6 +110,11 @@ class UdpBridgeService:
                 sock.close()
             except OSError:
                 pass
+
+        try:
+            self._action_queue.put_nowait(None)
+        except Exception:
+            pass
 
     def _listen_loop(self) -> None:
         recv_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -178,12 +197,8 @@ class UdpBridgeService:
             self._state["enemy_start_locations"] = payload.get("enemy_start_locations", [])
             self._state["mineral_fields"] = payload.get("mineral_fields", [])
             self._state["geysers"] = payload.get("geysers", [])
-            self._state["own_units"] = payload.get("units", [])
-            if "own_units" in payload:
-                self._state["own_units"] = payload["own_units"]
-            self._state["enemy_units"] = payload.get("enemy_units", [])
-            if "enemy_units" in payload:
-                self._state["enemy_units"] = payload["enemy_units"]
+            self._state["own_units"] = self._normalize_unit_state(payload.get("own_units", payload.get("units", [])))
+            self._state["enemy_units"] = self._normalize_unit_state(payload.get("enemy_units", []))
         elif event_name == "onFrame":
             if payload.get("race"):
                 self._state["self_race"] = payload.get("race")
@@ -201,9 +216,9 @@ class UdpBridgeService:
             if "start_tile_y" in payload:
                 self._state["start_tile_y"] = payload["start_tile_y"]
             if "own_units" in payload:
-                self._state["own_units"] = payload["own_units"]
+                self._state["own_units"] = self._normalize_unit_state(payload["own_units"])
             if "enemy_units" in payload:
-                self._state["enemy_units"] = payload["enemy_units"]
+                self._state["enemy_units"] = self._normalize_unit_state(payload["enemy_units"])
             inferred_enemy_opening = self._infer_enemy_opening_from_units()
             if inferred_enemy_opening:
                 self._state["enemy_opening"] = inferred_enemy_opening
@@ -216,8 +231,10 @@ class UdpBridgeService:
         elif event_name == "onUnitDestroy":
             destroyed_type = str(payload.get("type") or "")
             destroyed_id = payload.get("id")
-            self._state["own_units"] = [unit for unit in self._state.get("own_units", []) if str(unit.get("id")) != str(destroyed_id)]
-            self._state["enemy_units"] = [unit for unit in self._state.get("enemy_units", []) if str(unit.get("id")) != str(destroyed_id)]
+            own_units = self._normalize_unit_state(self._state.get("own_units", []))
+            enemy_units = self._normalize_unit_state(self._state.get("enemy_units", []))
+            self._state["own_units"] = [unit for unit in own_units if str(unit.get("id")) != str(destroyed_id)]
+            self._state["enemy_units"] = [unit for unit in enemy_units if str(unit.get("id")) != str(destroyed_id)]
             if destroyed_type in {"Protoss_Probe", "Terran_SCV", "Zerg_Drone"}:
                 own_unit_ids = {str(unit.get("id")) for unit in self._state.get("own_units", [])}
                 enemy_unit_ids = {str(unit.get("id")) for unit in self._state.get("enemy_units", [])}
@@ -237,6 +254,25 @@ class UdpBridgeService:
         elif event_name == "strategy_scout":
             if payload.get("sent_initial_scout"):
                 self._state["sent_initial_scout"] = True
+        elif event_name == "receive_text":
+            self._state["last_receive_text"] = payload.get("text")
+            self._state["last_receive_player"] = payload.get("player")
+        elif event_name == "callback_invoked":
+            callback_name = str(payload.get("callback") or "")
+            callback_payload = payload.get("payload")
+            self._state["last_callback_name"] = callback_name
+            self._state["last_callback_payload"] = deepcopy(callback_payload)
+            if callback_name == "onSendText" and isinstance(callback_payload, dict):
+                self._state["last_send_text"] = callback_payload.get("text")
+            elif callback_name == "onPlayerLeft" and isinstance(callback_payload, dict):
+                self._state["last_player_left"] = callback_payload.get("player")
+            elif callback_name == "onNukeDetect":
+                self._state["last_nuke_target"] = deepcopy(callback_payload)
+            elif callback_name == "onSaveGame" and isinstance(callback_payload, dict):
+                self._state["last_save_game"] = callback_payload.get("game_name")
+            elif callback_name.startswith("onUnit"):
+                self._state["last_unit_event"] = callback_name
+                self._state["last_unit_payload"] = deepcopy(callback_payload)
         elif event_name == "ui_action_sent":
             action = payload.get("action") if isinstance(payload, dict) else None
             if isinstance(action, dict):
@@ -268,14 +304,33 @@ class UdpBridgeService:
 
     def send_raw(self, raw_json: str) -> None:
         self.start_listener()
-        with self._lock:
-            send_sock = self._send_sock
-        if send_sock is None:
-            raise RuntimeError("Action socket is not initialized")
-        send_sock.sendto(raw_json.encode("utf-8"), (UDP_HOST, UDP_ACTION_PORT))
+        self._action_queue.put(raw_json)
 
     def send_action(self, action: Dict[str, Any]) -> None:
         self.send_actions([action])
+
+    def _send_loop(self) -> None:
+        while True:
+            try:
+                raw_json = self._action_queue.get(timeout=0.25)
+            except queue.Empty:
+                with self._lock:
+                    if not self._running:
+                        break
+                continue
+
+            if raw_json is None:
+                break
+
+            with self._lock:
+                send_sock = self._send_sock
+            if send_sock is None:
+                continue
+            try:
+                send_sock.sendto(str(raw_json).encode("utf-8"), (UDP_HOST, UDP_ACTION_PORT))
+            except OSError as exc:
+                self._state["last_error"] = str(exc)
+                self.emit_local_event("bridge_error", {"message": str(exc)})
 
     def _parse_unit_entries(self, value: Any) -> List[Dict[str, Any]]:
         if not value:
@@ -295,6 +350,9 @@ class UdpBridgeService:
             except ValueError:
                 continue
         return entries
+
+    def _normalize_unit_state(self, value: Any) -> List[Dict[str, Any]]:
+        return self._parse_unit_entries(value)
 
     def _infer_enemy_opening_from_units(self) -> str:
         units = self._parse_unit_entries(self._state.get("enemy_units"))

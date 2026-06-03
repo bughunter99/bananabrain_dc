@@ -133,22 +133,55 @@
   }
   button:hover { filter: brightness(1.1); }
   .events {
-    max-height: 68vh;
+    max-height: 58vh;
     overflow: auto;
     display: grid;
     gap: 8px;
   }
+  .log-tabs {
+    display: flex;
+    gap: 6px;
+    padding: 4px 0 2px;
+  }
+  .log-tab-btn {
+    border: 1px solid var(--line);
+    background: rgba(255,255,255,0.04);
+    color: var(--text);
+    border-radius: 999px;
+    padding: 5px 10px;
+    cursor: pointer;
+    font: inherit;
+    font-size: 11px;
+  }
+  .log-tab-btn.active {
+    border-color: rgba(74,163,255,0.5);
+    background: rgba(74,163,255,0.16);
+    color: var(--accent);
+  }
+  .log-panel { display: none; }
+  .log-panel.active { display: grid; gap: 6px; }
   .event {
-    padding: 12px 12px 10px;
-    border-radius: 12px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: start;
+    padding: 8px 10px;
+    border-radius: 10px;
     background: var(--panel2);
     border: 1px solid var(--line);
     font-family: Consolas, monospace;
-    font-size: 12px;
+    font-size: 11px;
   }
-  .event-head { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); margin-bottom: 8px; }
+  .event-main { min-width: 0; }
+  .event-head { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); margin-bottom: 4px; font-size: 10px; }
   .event-name { color: var(--accent); font-weight: 700; }
-  .event-json { white-space: pre-wrap; word-break: break-word; color: #cbd5e1; }
+  .event-json { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #cbd5e1; }
+  .copy-btn {
+    white-space: nowrap;
+    align-self: center;
+    padding: 5px 8px;
+    font-size: 11px;
+  }
   .muted { color: var(--muted); }
   .tabs {
     display: flex;
@@ -262,7 +295,12 @@
         <div class="btn-row">
           <button class="secondary" onclick="clearEvents()">Clear Events</button>
         </div>
-        <div class="events" id="events"></div>
+        <div class="log-tabs">
+          <button class="log-tab-btn active" data-log-tab="received" onclick="switchLogTab('received')">DLL 송신 메시지</button>
+          <button class="log-tab-btn" data-log-tab="sent" onclick="switchLogTab('sent')">DLL 수신 메시지</button>
+        </div>
+        <div class="log-panel active" id="sentEvents"></div>
+        <div class="log-panel" id="receivedEvents"></div>
       </div>
     </div>
   </section>
@@ -270,12 +308,17 @@
 
 <script>
 const initial = {{ initial_data|safe }};
-const eventBox = document.getElementById('events');
+const sentEventBox = document.getElementById('sentEvents');
+const receivedEventBox = document.getElementById('receivedEvents');
 const liveDot = document.getElementById('liveDot');
 const liveText = document.getElementById('liveText');
 let currentState = initial.state || {};
 let currentRuntime = initial.runtime || {};
 let currentCatalog = null;
+const logState = {
+  sent: [],
+  received: [],
+};
 
 function setLive(ok, text) {
   liveDot.classList.toggle('on', !!ok);
@@ -302,6 +345,95 @@ function renderState() {
   const lastPlacement = state.last_placement_policy || {};
   document.getElementById('lastStrategyValue').textContent = lastStrategy.opening || lastStrategy.mode || lastStrategy.type || '-';
   document.getElementById('lastPlacementValue').textContent = lastPlacement.plan || lastPlacement.wall_policy || lastPlacement.type || '-';
+}
+
+function eventDirection(event) {
+  if (!event) {
+    return 'received';
+  }
+  return event.source === 'game' ? 'received' : 'sent';
+}
+
+function compactJson(value) {
+  try {
+    return JSON.stringify(value);
+  } catch (err) {
+    return String(value);
+  }
+}
+
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    setLive(true, 'copied');
+  } catch (err) {
+    setLive(false, 'copy failed');
+  }
+}
+
+function createLogEventNode(event) {
+  const wrap = document.createElement('div');
+  wrap.className = 'event';
+
+  const main = document.createElement('div');
+  main.className = 'event-main';
+
+  const head = document.createElement('div');
+  head.className = 'event-head';
+  const name = document.createElement('span');
+  name.className = 'event-name';
+  name.textContent = event.event || 'unknown';
+  const stamp = document.createElement('span');
+  stamp.textContent = `${event.time || ''} #${event.frame ?? ''}`;
+  head.appendChild(name);
+  head.appendChild(stamp);
+
+  const json = document.createElement('div');
+  json.className = 'event-json';
+  json.textContent = compactJson(event);
+
+  main.appendChild(head);
+  main.appendChild(json);
+
+  const copyBtn = document.createElement('button');
+  copyBtn.className = 'secondary copy-btn';
+  copyBtn.textContent = 'Copy';
+  copyBtn.onclick = () => copyText(compactJson(event));
+
+  wrap.appendChild(main);
+  wrap.appendChild(copyBtn);
+  return wrap;
+}
+
+function renderLogPanel(kind) {
+  const box = kind === 'sent' ? sentEventBox : receivedEventBox;
+  if (!box) {
+    return;
+  }
+  box.innerHTML = '';
+  const events = logState[kind] || [];
+  events.slice().reverse().forEach((event) => {
+    box.appendChild(createLogEventNode(event));
+  });
+}
+
+function pushLogEvent(event) {
+  const kind = eventDirection(event);
+  const bucket = logState[kind];
+  bucket.push(event);
+  while (bucket.length > 60) {
+    bucket.shift();
+  }
+  renderLogPanel(kind);
+}
+
+function switchLogTab(kind) {
+  document.querySelectorAll('.log-tab-btn').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.logTab === kind);
+  });
+  document.querySelectorAll('.log-panel').forEach((panel) => {
+    panel.classList.toggle('active', panel.id === `${kind}Events`);
+  });
 }
 
 function openingRaceKey() {
@@ -360,29 +492,17 @@ function populateOpeningOptions() {
 }
 
 function addEventItem(event) {
-  if (!eventBox || !event) {
+  if (!event) {
     return;
   }
-  const wrap = document.createElement('div');
-  wrap.className = 'event';
-  const head = document.createElement('div');
-  head.className = 'event-head';
-  head.innerHTML = `<span class="event-name">${event.event || 'unknown'}</span><span>${event.time || ''} #${event.frame ?? ''}</span>`;
-  const json = document.createElement('div');
-  json.className = 'event-json';
-  json.textContent = JSON.stringify(event, null, 2);
-  wrap.appendChild(head);
-  wrap.appendChild(json);
-  eventBox.prepend(wrap);
-  while (eventBox.childElementCount > 24) {
-    eventBox.lastElementChild.remove();
-  }
+  pushLogEvent(event);
 }
 
 function clearEvents() {
-  if (eventBox) {
-    eventBox.innerHTML = '';
-  }
+  logState.sent = [];
+  logState.received = [];
+  renderLogPanel('sent');
+  renderLogPanel('received');
 }
 
 function loadCatalog() {

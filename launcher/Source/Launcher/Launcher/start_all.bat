@@ -22,7 +22,7 @@ start D:\WPy32-3680\python-3.6.8\python.exe chaoslauncher_cli.py --ini "D:\data3
 
 
 
-cd /d D:\data3\bwapid_ai_dc2\AI\python\web_bridge
+cd /d D:\data3\bwapid_ai_dc\AI\python\web_bridge
 
 set "DJANGO_HOST=127.0.0.1"
 set "DJANGO_PORT=8001"

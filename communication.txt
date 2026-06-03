@@ -545,3 +545,83 @@ BananaBrain에 있는 전략이 파이선 코드로 되어있어야 해.
 
 
 
+void ai_dc2::onFrame()랑 void MsgBusBridge::poll_actions()의 구조를 전체적으로 개선하려고.
+내부 queue를 두개 만들어서 하나는 dll내의 void ai_dc2::onFrame()에서 각 유닛의 상태나 게임의 상태를 파이썬 서버로 보내는걸로 쓰고,
+또 하나는 파이썬 서버에서 받으면 그걸 여기 넣어서 처리하려고.
+그러니까 void ai_dc2::onFrame() 에서는 보내는 큐에 현재 상태를 계속 넣고,
+받는 큐에 있는걸 처리하는걸로.
+이해되?
+
+
+그래. 그럼 위 내용으로 설계해줘. dll 내부적으로 뭔가 처리하는 남은 로직은 다 제거해야겠지?
+
+
+D:\data3\bwapi-4.4.0\bots\BananaBrain\BananaBrainAIIDE2024\src
+BW api example예 여러 전략들을 씨뿔뿔로 구현했는데,
+여기 기본 로직들을 파이썬에서 메시지로 dll로 보내야하거든.
+게임 시작해서 프루브들이 미네랄 모으는것도 여기 있는데,
+우리가 구현한 파이썬엔 없는거 같아.
+
+
+여기 웹에 있는 송신 메시지, 수신 메시지가
+dll이 받은거지? 그럼 수신 메시지, 송신 메시지로 이름이 바껴야할꺼 같은데?
+dll 기준으로 봐야하잖아.
+
+
+
+D:\data3\bwapi-4.4.0\bots\BananaBrain\BananaBrainAIIDE2024\src
+BW api example예 여러 전략들을 씨뿔뿔로 구현했는데,
+여기 기본 로직들을 파이썬에서 메시지로 dll로 보내야하거든.
+D:\data3\bwapi-4.4.0\bots\BananaBrain\BananaBrainAIIDE2024\src\Source\BananaBrain.cpp
+에서 void BananaBrain::onFrame() 를 보면,
+before();
+	strategy_->frame();
+	after();
+	surrender_if_hope_lost();
+    으로 되어 있단 말이야.
+이것도 이썬 코드에서 그대로 구현되어 이렇게 동작해야하는데,
+지금은 그렇지 않아.
+D:\data3\bwapid_ai_dc\AI\python\web_bridge\strategy_runtime.py
+에서 def _handle_frame(self, event: Dict[str, Any]) -> None: 함수에서
+위처럼 되야할것 같은데, 네 의견은 어떤지 알려줘.
+
+
+지금 여기 django 서버에서 msg를 받는 부분있지? 그게 
+D:\data3\bwapid_ai_dc\AI\python\web_bridge\strategy_runtime.py
+이지?
+이거 외에 django 웹서버랑 관계 없는 파이썬 전략 파일 폴더 다 지워줘.
+완전 새로 만들게.
+
+
+D:\data3\bwapid_ai_dc\AI\python\web_bridge\strategy_runtime.py
+이름도 brain.py로 바꿔주고, 이걸 호출하는 관련 코드도 바꿔줘.
+여기에 
+D:\data3\bwapi-4.4.0\bots\BananaBrain\BananaBrainAIIDE2024\src\Source
+에 있는 BananaBrain.cpp랑 같은 역할을 하게끔 개발할꺼야.
+
+
+실제 게임에서 발생한 이벤트가 여기 파이썬 서버로 들어오잖아?
+그 호출을 여기 brain.py에서 받는데, 이 클래스가 
+D:\data3\bwapi-4.4.0\bots\BananaBrain\BananaBrainAIIDE2024\src\Source
+에서 BananaBrain 클래스처럼 동작하게 할꺼야.
+어떤 의미인지 알겠어?
+D:\data3\bwapi-4.4.0\bots\BananaBrain\BananaBrainAIIDE2024\src\Source
+내에 코드를 파이썬으로 변환해서 똑같이 동작하게 계획을 세워줘.
+실제 동작은 dll로 메세지를 보내서 하게 할꺼야.
+
+
+
+다 된거 맞아? onReceiveText 함수가 없는데? 원래 cpp에서는 AIModule를 상속받아서  onReceiveText가 호출되지만 여기선 zmq를 통해 msg를 받아서 실행되게 해줘. 그래도 기본 함수는 같아야 해.
+
+
+실제 게임에서 발생한 이벤트가 여기 파이썬 서버로 들어오잖아?
+그 호출을 여기 brain.py에서 받는데, 이 클래스가 
+D:\data3\bwapi-4.4.0\bots\BananaBrain\BananaBrainAIIDE2024\src\Source
+에서 BananaBrain 클래스처럼 동작하게 할꺼야.
+그런데 아직 구현안된 함수들이 많이 있거든. 이거 다 구현해줘.
+onStart 만 겨우 구현된 상태야.
+
+
+이거외에 없는 함수들도 많은데 확인해줘. 무슨무슨 함수가 없는지.
+
+

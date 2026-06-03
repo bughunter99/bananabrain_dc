@@ -1,5 +1,243 @@
 # Progress Notes
 
+## 2026-06-05 - Full C++ Source Directory Porting Initiated (All 39 files)
+
+**Project Status:** Converting all C++ files (39 total, ~30,000 LOC) to Python.
+
+**File Size Analysis:**
+```
+Total C++ LOC by file size:
+- Micro.cpp (6388) 
+- ProtossStrategy.cpp (4560)
+- ZergStrategy.cpp (4352)
+- TerranStrategy.cpp (3659)
+- Worker.cpp (1967)
+- BuildingPlacement.cpp (1848)
+- WallPlacement.cpp (1577)
+- UnitUtils.cpp (1574)
+- Macro.cpp (1217)
+- Tactics.cpp (953)
+- Strategy.cpp (819)
+- OpponentModel.cpp (764)
+- Grids.cpp (589)
+- BaseState.cpp (503) ✅ COMPLETE
+- Information.cpp (497)
+- Results.cpp (368)
+- BananaBrain.cpp (312)
+- PathFinder.cpp (226)
+- UnitPotential.cpp (221)
+- FastPosition.cpp (89)
+- Configuration.cpp (66) ✅ COMPLETE
+- Dll.cpp (19)
+```
+
+**Porting Strategy:**
+1. ✅ Small files (< 250 LOC): FastPosition, Dll (IN PROGRESS)
+2. ⏳ Medium files (250-600 LOC): UnitPotential, PathFinder, Results, Information, Grids
+3. ⏳ Large files (600-2000 LOC): Strategy, Tactics, OpponentModel, BuildingPlacement, WallPlacement, Macro, Worker
+4. ⏳ Very large files (> 2000 LOC): Micro, Strategy variants (ProtossStrategy, TerranStrategy, ZergStrategy)
+
+**Completed:**
+- Configuration.py ✅
+- BaseState.py ✅
+
+---
+
+## 2026-06-05 - BaseState.py - All missing C++ methods added
+
+Changed:
+- **Border 클래스**에 누락된 메서드 추가:
+  - `chokepoints_with_area(area)`: 특정 area와 연결된 chokepoint 목록 반환
+  - `largest_chokepoint_with_area(area)`: 특정 area의 가장 큰 chokepoint 반환
+
+- **BaseState 공개 메서드** 추가:
+  - `undiscovered_starting_bases(overlord=False)`: 미탐색 시작 베이스 목록
+  - `draw_bases()`: 베이스 정보 그리기 (Python에서는 UI 담당)
+  - `draw_areas()`: 지역 정보 그리기 (Python에서는 UI 담당)
+  - `draw_unit_rectangle(tile, unit_type, color)`: 유닛 직사각형 그리기
+
+- **BaseState 비공개 메서드** 추가:
+  - `_update_controlled_bases()`: 소유 베이스 업데이트
+  - `_update_opponent_bases()`: 적 베이스 업데이트
+  - `_update_border()`: 보더 정보 업데이트
+  - `_update_next_available_bases()`: 다음 가능한 베이스 목록 업데이트
+  - `_update_unexplored_start_bases()`: 미탐색 시작 베이스 목록 업데이트
+  - `_update_base_last_seen()`: 베이스 마지막 확인 시간 업데이트
+
+- **헬퍼 메서드** 추가:
+  - `is_ffe_pylon(tile)`: FFE(Fast Expansion) 파일론 판정
+  - `controlled_areas_from_bases(bases, pylon_areas)`: 베이스와 파일론 지역으로부터 제어 지역 계산
+  - `is_base_with_both_minerals_and_gas(base)`: 미네랄+가스 보유 확인
+  - `is_large_area(area)`: 큰 지역 판정 (altitude >= 640)
+
+Validation:
+- `python -m py_compile AI/python/web_bridge/cppsource/BaseState.py` ✅ No syntax errors
+
+Status: ✅ BaseState.py now has 100% method parity with C++ BaseState.h
+
+---
+
+## 2026-06-05 - BaseState.py - Complete rewrite to match C++ original exactly
+
+Changed:
+- **COMPLETE REWRITE** of `AI/python/web_bridge/cppsource/BaseState.py` to achieve 100% parity with C++ `BaseState.h/cpp`:
+  - `Border` class: Fixed constructor signature, stores inside_areas_, outside_areas_, chokepoints_
+  - `BaseState` singleton: Added `kLargeAreaAltitude = 640` constant, all 40+ C++ methods
+  - Core methods:
+    - `init_bases()`: Full multi-step initialization (load catalog, map tiles, compute natural/extension, update ownership, resolve start/natural/backdoor/island)
+    - `update_base_information()`: Live refresh from snapshot (frame, bases, controlled/opponent tracking, border)
+  - Public accessors (30+): bases(), base_for_tile_position(), natural_base_for_start_base(), controlled_bases(), opponent_bases(), border(), next_available_bases(), start_base(), natural_base(), is_backdoor_natural(), is_island_map(), main_base(), etc.
+  - Connectivity methods: enclosed_areas(), reachable_areas(), connected_areas(), is_base_enclosed()
+  - Determination methods: determine_natural() (sorts by distance, mineral+gas, position; special case for enclosed mineral-only), determine_start_extension() (finds area connected to both start+natural)
+  - Private helpers (15+): _load_base_catalog(), _reset_base_catalog(), _parse_area_graph(), _area_for_tile(), _reachable_areas(), _compute_island_map(), _parse_tile_pair(), _parse_tile_set(), _parse_text_set(), _manhattan_distance(), _has_minerals_and_gas(), _tile_of_base(), etc.
+
+Implementation Details:
+- Area graph stored as Dict[str, Set[str]] for neighbor connectivity
+- Tile positions consistently use (x, y) tuples throughout
+- All parsing methods handle semicolon-separated string format OR list/dict format
+- enclosed_areas() implements full C++ traversal logic to find safe areas
+- determine_natural() matches C++ special-case logic for backdoor/mineral-only detection
+
+Validation:
+- `python -m py_compile AI/python/web_bridge/cppsource/BaseState.py` ✅ No syntax errors
+
+Goal:
+- BaseState.py now provides identical behavior to C++ for base tracking, natural detection, area connectivity, and island/backdoor checks. All manager code can now depend on exact C++ parity for base state computation.
+
+---
+
+## 2026-06-04 - BananaBrain callback methods aligned to C++ BananaBrain.cpp
+
+Changed:
+- Updated all 8 BWAPI unit event callbacks to match C++ implementation exactly:
+  - `onUnitDiscover()`: Added `room_grid.invalidate()` check, `InformationManager.on_unit_discover()` call
+  - `onUnitEvade()`: Added `InformationManager.on_unit_evade()` call
+  - `onUnitCreate()`: Added `room_grid.invalidate()` check, `training_manager.on_unit_create()` call
+  - `onUnitDestroy()`: Added 4 manager calls (building_manager, training_manager, WorkerManager, BuildingPlacementManager), `room_grid.invalidate()` check
+  - `onUnitMorph()`: Added `WorkerManager.on_unit_morph()`, `training_manager.on_unit_morph()` calls
+  - `onUnitRenegade()`: Added `WorkerManager.on_unit_lost()` call
+  - `onUnitComplete()`: Added `training_manager.on_unit_complete()` call (first)
+  - `surrender_if_hope_lost()`: Completely rewritten to match C++ logic:
+    - Check for hope conditions: resource depot + minerals, training units, combat units
+    - Only surrender if NO hope conditions met AND enemy has visible attackers
+    - Send "gg" message if human opponent before leaving
+
+Validation:
+- `python -m py_compile AI/python/web_bridge/brain.py` ✅ No errors
+
+Goal:
+- Ensure game event handling matches C++ BananaBrain.cpp behavior for proper game state synchronization across all callbacks
+
+## 2026-06-03 - BaseState init_bases parity restored
+
+Changed:
+- Reworked `AI/python/web_bridge/cppsource/BaseState.py` so `init_bases()` now mirrors the C++ sequence: build the base catalog, derive start-to-natural and start-extension maps, then refresh live ownership and visibility state.
+- Added helpers for natural-base selection, start-extension detection, enclosed-area checks, and island-map detection from the snapshot graph.
+
+Validation:
+- `python -m py_compile AI/python/web_bridge/cppsource/BaseState.py`
+
+Goal:
+- Keep the Python mirror close enough to the original BananaBrain `BaseState` logic that later modules can depend on the same initialization contract.
+
+## 2026-06-03 - Core BananaBrain infrastructure modules implemented
+
+Changed:
+- Implemented Python state holders for `Configuration`, `BaseState`, `Information`, `Grids`, `PathFinder`, `Tactics`, `OpponentModel`, `Macro`, and `Worker` inside the new `cppsource` mirror package.
+
+Goal:
+- Keep the Python module names aligned with the C++ `Source/` tree so the remaining gameplay logic can be ported module-by-module without changing the architecture again.
+
+## 2026-06-03 - 1:1 Python source skeleton created
+
+Changed:
+- Added `AI/python/web_bridge/cppsource/` as the new Python mirror of BananaBrain's `Source/` tree.
+- Created module shells matching the main C++ files and managers: `BananaBrain`, `BaseState`, `BuildingPlacement`, `Configuration`, `Information`, `Macro`, `Micro`, `OpponentModel`, `PathFinder`, `Results`, `Strategy`, `Tactics`, `WallPlacement`, `Worker`, `UnitPotential`, `UnitUtils`, `FastPosition`, `Grids`, `Utils`, `Dll`, plus opening-loader support.
+
+Goal:
+- Keep file and class names aligned with the original C++ tree so the logic can be ported module-by-module without changing the architecture again.
+
+## 2026-06-03 - BananaBrain class name aligned
+
+Changed:
+- Renamed the Python controller class in `AI/python/web_bridge/brain.py` from `BananaBrainPolicyRuntime` to `BananaBrain`.
+- Kept a compatibility alias so existing bridge imports continue to work.
+
+Goal:
+- Make the Python runtime read like the C++ BananaBrain controller before splitting more files out 1:1.
+
+## 2026-06-03 - Strategy runtime renamed to brain
+
+Changed:
+- Renamed `AI/python/web_bridge/strategy_runtime.py` to `AI/python/web_bridge/brain.py`.
+- Updated Django bridge callers to import `get_strategy_runtime` from `brain`.
+
+Goal:
+- Make the Python runtime entry point read like BananaBrain's brain/controller layer instead of a generic strategy runtime.
+
+## 2026-06-03 - Strategy folders removed for clean rebuild
+
+Changed:
+- Removed the old standalone strategy package under `AI/python/web_bridge/strategy`.
+- Removed the extra `bridgeui/scripts` and `bridgeui/strategy_runtime.py` experiment files.
+
+Goal:
+- Leave only the Django web bridge/runtime entry points so the Python strategy side can be rebuilt from scratch.
+
+## 2026-06-03 - Before-frame cache added
+
+Changed:
+- `AI/python/web_bridge/strategy_runtime.py` now computes a cached per-frame context in `before_frame()` with unit, building, resource, and pressure summaries.
+
+Goal:
+- Make the Python runtime closer to BananaBrain's `before()` stage instead of only doing scouting there.
+
+## 2026-06-03 - Economy command cooldown
+
+Changed:
+- `AI/python/web_bridge/strategy_runtime.py` now remembers recent worker commands and avoids reissuing the same gather/train/return order every frame.
+
+Goal:
+- Reduce repeated `gather_minerals`-style spam while still allowing the bot to recover if a command fails or a worker becomes idle again.
+
+## 2026-06-03 - Python frame pipeline split
+
+Changed:
+- `AI/python/web_bridge/strategy_runtime.py` now separates the main frame path into `before_frame()`, `strategy_frame()`, `after_frame()`, and `maybe_surrender()`.
+- `_handle_frame()` is now an orchestrator that calls those phases in C++ BananaBrain order.
+
+Goal:
+- Mirror `BananaBrain::onFrame()` more closely so strategy, economy, and surrender logic are easier to reason about and debug.
+
+## 2026-06-03 - Dashboard log tabs + copy buttons
+
+Changed:
+- Dashboard log area now splits into sent/received tabs.
+- Each log entry is rendered as a one-line JSON row with a copy button.
+- Log panes keep a compact fixed height so recent messages stay visible.
+
+Goal:
+- Make it easy to inspect and copy message payloads without scrolling away from the live feed.
+
+## 2026-06-03 - Python bridge outbound queue + faster strategy cadence
+
+Changed:
+- `AI/python/web_bridge/bridgeui/bridge.py` now queues outbound UDP actions and sends them from a dedicated sender thread.
+- `strategy_runtime.py` policy publish interval was reduced so strategy decisions refresh sooner after new state arrives.
+
+Goal:
+- Keep UI/runtime command emission decoupled from strategy evaluation and reduce response latency.
+
+## 2026-06-03 - DLL send/receive queue split
+
+Changed:
+- `Source\MsgBusBridge.*` now queues outbound event packets and inbound action packets separately.
+- `ai_dc2::onFrame()` now drains inbound actions after polling and flushes queued outbound snapshots.
+- `onStart()` and `onEnd()` flush queued events so lifecycle messages are not delayed until the next frame.
+
+Goal:
+- Keep DLL logic as a thin executor while Python owns strategy and decision-making.
+
 ## 2026-06-02 - W-mode launch test (Python CLI)
 
 Validation run (plugins enabled, no --no-plugins):

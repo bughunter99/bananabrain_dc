@@ -11,7 +11,7 @@ from django.views.decorators.http import require_GET, require_POST
 
 from .bridge import bridge_service
 from strategy.opening_loader import reload_opening_modules
-from strategy_runtime import get_strategy_runtime
+from brain import get_strategy_runtime
 
 
 def _json_body(request: HttpRequest) -> Dict[str, Any]:

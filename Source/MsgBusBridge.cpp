@@ -295,8 +295,10 @@ bool MsgBusBridge::start() {
 }
 
 void MsgBusBridge::stop() {
+    flush_pending_events();
     if (running_) {
         send_event("shutdown");
+        flush_pending_events();
     }
     running_ = false;
 
@@ -322,13 +324,7 @@ void MsgBusBridge::send_event(const std::string& event_name,
 
     int frame = (BroodwarPtr != nullptr) ? Broodwar->getFrameCount() : -1;
     const std::string msg = build_message(event_name, frame, payload_to_json(payload));
-
-    sendto(to_sock(send_sock_),
-                 msg.c_str(),
-                 static_cast<int>(msg.size()),
-                 0,
-                 reinterpret_cast<const sockaddr*>(agent_addr_),
-                 sizeof(sockaddr_in));
+    enqueue_event_packet(msg);
 }
 
 void MsgBusBridge::send_raw_event(const std::string& event_name,
@@ -339,13 +335,7 @@ void MsgBusBridge::send_raw_event(const std::string& event_name,
 
     int frame = (BroodwarPtr != nullptr) ? Broodwar->getFrameCount() : -1;
     const std::string msg = build_message(event_name, frame, raw_payload_json);
-
-    sendto(to_sock(send_sock_),
-                 msg.c_str(),
-                 static_cast<int>(msg.size()),
-                 0,
-                 reinterpret_cast<const sockaddr*>(agent_addr_),
-                 sizeof(sockaddr_in));
+    enqueue_event_packet(msg);
 }
 
 void MsgBusBridge::poll_actions() {
@@ -368,7 +358,40 @@ void MsgBusBridge::poll_actions() {
             break;
         }
         buf[bytes] = '\0';
-        apply_action_json(std::string(buf, bytes));
+        enqueue_action_packet(std::string(buf, bytes));
+    }
+}
+
+void MsgBusBridge::flush_pending_events() {
+    if (!sock_valid(send_sock_)) {
+        return;
+    }
+
+    std::deque<std::string> packets;
+    {
+        std::lock_guard<std::mutex> lock(queue_mutex_);
+        packets.swap(pending_event_packets_);
+    }
+
+    for (const auto& packet : packets) {
+        sendto(to_sock(send_sock_),
+                     packet.c_str(),
+                     static_cast<int>(packet.size()),
+                     0,
+                     reinterpret_cast<const sockaddr*>(agent_addr_),
+                     sizeof(sockaddr_in));
+    }
+}
+
+void MsgBusBridge::process_pending_actions() {
+    std::deque<std::string> packets;
+    {
+        std::lock_guard<std::mutex> lock(queue_mutex_);
+        packets.swap(pending_action_packets_);
+    }
+
+    for (const auto& packet : packets) {
+        apply_action_json(packet);
     }
 }
 
@@ -408,6 +431,16 @@ std::string MsgBusBridge::build_message(const std::string& event_name,
     return "{\"event\":\"" + escape_json(event_name) +
                  "\",\"frame\":" + std::to_string(frame) +
                  ",\"payload\":" + payload_json + "}";
+}
+
+void MsgBusBridge::enqueue_event_packet(const std::string& packet) {
+    std::lock_guard<std::mutex> lock(queue_mutex_);
+    pending_event_packets_.push_back(packet);
+}
+
+void MsgBusBridge::enqueue_action_packet(const std::string& packet) {
+    std::lock_guard<std::mutex> lock(queue_mutex_);
+    pending_action_packets_.push_back(packet);
 }
 
 void MsgBusBridge::apply_action_json(const std::string& json) {

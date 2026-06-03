@@ -1,1 +1,0 @@
-# Opening-level strategy package.

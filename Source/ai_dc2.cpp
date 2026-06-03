@@ -88,6 +88,7 @@ void ai_dc2::onStart()
         {"enemy_units", enemy_units_str},
         {"mineral_fields", mineral_fields_str}
     });
+    python_bridge.flush_pending_events();
 
     // Enable the UserInput flag, which allows us to control the bot and type messages.
     Broodwar->enableFlag(Flag::UserInput);
@@ -131,6 +132,7 @@ void ai_dc2::onEnd(bool isWinner)
     python_bridge.send_event("onEnd", {
         {"is_winner", isWinner ? "true" : "false"}
     });
+    python_bridge.flush_pending_events();
     python_bridge.stop();
 
     // Called when the game ends
@@ -143,6 +145,7 @@ void ai_dc2::onEnd(bool isWinner)
 void ai_dc2::onFrame()
 {
     python_bridge.poll_actions();
+    python_bridge.process_pending_actions();
 
     std::string mineral_fields_str;
     for (const auto& unit : Broodwar->getNeutralUnits()) {
@@ -305,6 +308,8 @@ void ai_dc2::onFrame()
         });
     }
 
+    python_bridge.flush_pending_events();
+
     // Called once every game frame
 
     // Display the game frame rate as text in the upper left area of the screen
@@ -337,13 +342,20 @@ void ai_dc2::onSendText(std::string text)
 
 void ai_dc2::onReceiveText(BWAPI::Player player, std::string text)
 {
-    // Parse the received text
-    Broodwar << player->getName() << " said \"" << text << "\"" << std::endl;
+    const std::string player_name = player ? player->getName() : "Unknown";
+
+    Broodwar << player_name << " said \"" << text << "\"" << std::endl;
+    python_bridge.send_event("onReceiveText", {
+        {"player", player_name},
+        {"text", text}
+    });
 }
 
 void ai_dc2::onPlayerLeft(BWAPI::Player player)
 {
-    (void)player;
+    python_bridge.send_event("onPlayerLeft", {
+        {"player", player ? player->getName() : "Unknown"}
+    });
 }
 
 void ai_dc2::onNukeDetect(BWAPI::Position target)
@@ -359,18 +371,50 @@ void ai_dc2::onNukeDetect(BWAPI::Position target)
 
 void ai_dc2::onUnitDiscover(BWAPI::Unit unit)
 {
+    if (unit != nullptr)
+    {
+        python_bridge.send_event("onUnitDiscover", {
+            {"id", std::to_string(unit->getID())},
+            {"type", unit->getType().getName()},
+            {"player", unit->getPlayer() ? unit->getPlayer()->getName() : "Unknown"}
+        });
+    }
 }
 
 void ai_dc2::onUnitEvade(BWAPI::Unit unit)
 {
+    if (unit != nullptr)
+    {
+        python_bridge.send_event("onUnitEvade", {
+            {"id", std::to_string(unit->getID())},
+            {"type", unit->getType().getName()},
+            {"player", unit->getPlayer() ? unit->getPlayer()->getName() : "Unknown"}
+        });
+    }
 }
 
 void ai_dc2::onUnitShow(BWAPI::Unit unit)
 {
+    if (unit != nullptr)
+    {
+        python_bridge.send_event("onUnitShow", {
+            {"id", std::to_string(unit->getID())},
+            {"type", unit->getType().getName()},
+            {"player", unit->getPlayer() ? unit->getPlayer()->getName() : "Unknown"}
+        });
+    }
 }
 
 void ai_dc2::onUnitHide(BWAPI::Unit unit)
 {
+    if (unit != nullptr)
+    {
+        python_bridge.send_event("onUnitHide", {
+            {"id", std::to_string(unit->getID())},
+            {"type", unit->getType().getName()},
+            {"player", unit->getPlayer() ? unit->getPlayer()->getName() : "Unknown"}
+        });
+    }
 }
 
 void ai_dc2::onUnitCreate(BWAPI::Unit unit)
@@ -400,18 +444,44 @@ void ai_dc2::onUnitDestroy(BWAPI::Unit unit)
 
 void ai_dc2::onUnitMorph(BWAPI::Unit unit)
 {
-    (void)unit;
+    if (unit != nullptr)
+    {
+        python_bridge.send_event("onUnitMorph", {
+            {"id", std::to_string(unit->getID())},
+            {"type", unit->getType().getName()},
+            {"player", unit->getPlayer() ? unit->getPlayer()->getName() : "Unknown"}
+        });
+    }
 }
 
 void ai_dc2::onUnitRenegade(BWAPI::Unit unit)
 {
+    if (unit != nullptr)
+    {
+        python_bridge.send_event("onUnitRenegade", {
+            {"id", std::to_string(unit->getID())},
+            {"type", unit->getType().getName()},
+            {"player", unit->getPlayer() ? unit->getPlayer()->getName() : "Unknown"}
+        });
+    }
 }
 
 void ai_dc2::onSaveGame(std::string gameName)
 {
     Broodwar << "The game was saved to \"" << gameName << "\"" << std::endl;
+    python_bridge.send_event("onSaveGame", {
+        {"game_name", gameName}
+    });
 }
 
 void ai_dc2::onUnitComplete(BWAPI::Unit unit)
 {
+    if (unit != nullptr)
+    {
+        python_bridge.send_event("onUnitComplete", {
+            {"id", std::to_string(unit->getID())},
+            {"type", unit->getType().getName()},
+            {"player", unit->getPlayer() ? unit->getPlayer()->getName() : "Unknown"}
+        });
+    }
 }
