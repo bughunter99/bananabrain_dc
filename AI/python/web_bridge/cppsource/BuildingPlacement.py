@@ -99,9 +99,9 @@ class BuildingPlacementManager:
         """Set count including planned."""
         self.building_counts_including_planned_[unit_type] = count
     
-    def building_exists(self, unit_type: str) -> bool:
-        """Check if building exists."""
-        return self.existing_buildings_.get(unit_type, 0) > 0
+    def building_exists(self, unit_type: str, count: int = 1) -> bool:
+        """Check if building exists (optionally with minimum count)."""
+        return self.existing_buildings_.get(unit_type, 0) >= count
     
     def set_building_exists(self, unit_type: str, exists: bool) -> None:
         """Set building existence."""

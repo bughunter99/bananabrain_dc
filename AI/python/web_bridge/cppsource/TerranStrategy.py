@@ -146,29 +146,272 @@ class TerranStrategy(Strategy):
     
     def frame_inner(self) -> None:
         """Execute Terran strategy logic each frame."""
-        if self._opening == kTvZ_Fantasy:
-            self.opening_TvZ_fantasy()
+        # Handle opening phase
+        if self.mode_ == TerranMode.OPENING:
+            if self._opening == kTvZ_Fantasy:
+                self.opening_TvZ_fantasy()
+            else:
+                self.update_stage()
+        
+        # Handle main strategies
+        elif self.mode_ == TerranMode.MAIN_BIO:
+            self.main_BIO()
+        elif self.mode_ == TerranMode.MAIN_MECH:
+            self.main_MECH()
+        elif self.mode_ == TerranMode.DEFEND_FAST_POOL:
+            self.defend_fast_pool()
         else:
             self.update_stage()
+    
+    def main_BIO(self) -> None:
+        """Handle MAIN_BIO strategy - Marine + Medic army."""
+        from cppsource.TrainingManager import TrainingManager
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        from cppsource.Tactics import TacticsManager
+        
+        training_manager = TrainingManager.Instance()
+        building_manager = BuildingPlacementManager.Instance()
+        tactics = TacticsManager.Instance()
+        
+        # Continue marine production
+        marine_count = training_manager.unit_count("Terran_Marine")
+        if marine_count < 20:
+            training_manager.larva_train_distribution().set("Terran_Marine", 1.0)
+        
+        # Add more medics
+        medic_count = training_manager.unit_count("Terran_Medic")
+        if medic_count < marine_count // 4:
+            training_manager.larva_train_distribution().set("Terran_Medic", 0.5)
+        
+        # Infantry upgrades
+        building_manager.request_upgrade("Terran_Infantry_Weapons")
+        building_manager.request_upgrade("Terran_Infantry_Armor")
+        
+        # Add barracks
+        barracks_count = building_manager.building_count_including_planned("Terran_Barracks")
+        if barracks_count < 4 and marine_count >= 10:
+            building_manager.set_requested_building_count_at_least("Terran_Barracks", barracks_count + 1)
+        
+        # Expand
+        if marine_count >= 12 and tactics.enemy_pressure() == "low":
+            building_manager.set_requested_building_count_at_least("Terran_Command_Center", 2)
+        
+        # Continue attacking
+        if tactics.should_attack():
+            self.attacking_ = True
+    
+    def main_MECH(self) -> None:
+        """Handle MAIN_MECH strategy - Tanks + Goliaths."""
+        from cppsource.TrainingManager import TrainingManager
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        
+        training_manager = TrainingManager.Instance()
+        building_manager = BuildingPlacementManager.Instance()
+        
+        # Siege tanks
+        tank_count = training_manager.unit_count("Terran_Siege_Tank_Tank_Mode")
+        if tank_count < 10:
+            training_manager.larva_train_distribution().set("Terran_Siege_Tank_Tank_Mode", 0.7)
+        
+        # Goliaths for air defense
+        goliath_count = training_manager.unit_count("Terran_Goliath")
+        if goliath_count < tank_count // 2:
+            training_manager.larva_train_distribution().set("Terran_Goliath", 0.3)
+        
+        # Siege mode upgrade
+        if tank_count >= 3:
+            building_manager.request_upgrade("Terran_Siege_Tech")
+        
+        # Factory and starport
+        factory_count = building_manager.building_count_including_planned("Terran_Factory")
+        if factory_count < 3:
+            building_manager.set_requested_building_count_at_least("Terran_Factory", factory_count + 1)
+        
+        # Armor upgrades
+        building_manager.request_upgrade("Terran_Vehicle_Armor")
+        building_manager.request_upgrade("Terran_Vehicle_Weapons")
+    
+    def defend_fast_pool(self) -> None:
+        """Handle DEFEND_FAST_POOL - defend against early Zerg pool."""
+        from cppsource.TrainingManager import TrainingManager
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        
+        training_manager = TrainingManager.Instance()
+        building_manager = BuildingPlacementManager.Instance()
+        
+        supply = self.opening_supply_count()
+        
+        # === Early bunkers at ramp ===
+        if supply >= 16:
+            building_manager.set_requested_building_count_at_least("Terran_Bunker", 2)
+        
+        # === Marines for bunker and main army ===
+        marine_count = training_manager.unit_count("Terran_Marine")
+        if marine_count < 10:
+            training_manager.larva_train_distribution().set("Terran_Marine", 1.0)
+        
+        # === Get extra supply depots ===
+        if supply >= 22:
+            building_manager.set_requested_building_count_at_least("Terran_Supply_Depot", 2)
+        
+        # === Transition when safe ===
+        if (marine_count >= 10 and 
+            building_manager.building_count_including_planned("Terran_Bunker") >= 2):
+            self.mode_ = TerranMode.MAIN_BIO
     
     def update_stage(self) -> None:
         """Update Terran stage."""
         pass
     
     def opening_TvZ_fantasy(self) -> None:
-        """Handle TvZ Fantasy opening."""
+        """Handle TvZ Fantasy opening.
+        
+        Fantasy build - early aggression with Marines and Medics.
+        Two barracks to pressure early Zerg.
+        """
         from cppsource.OpponentModel import OpponentModel
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        from cppsource.TrainingManager import TrainingManager
         
         opponent_model = OpponentModel.Instance()
+        building_manager = BuildingPlacementManager.Instance()
+        training_manager = TrainingManager.Instance()
         
         # Check for fast pool defense
         if opponent_model.enemy_opening() == "Z_4_5Pool":
             self.mode_ = TerranMode.DEFEND_FAST_POOL
             return
         
-        # Continue opening execution
-        pass
+        # Get current supply
+        supply = self.opening_supply_count()
+        
+        # === SUPPLY 12: First Barracks ===
+        if supply >= 12:
+            building_manager.set_requested_building_count_at_least("Terran_Barracks", 1)
+        
+        # === SUPPLY 15: Second Barracks ===
+        if supply >= 15:
+            building_manager.set_requested_building_count_at_least("Terran_Barracks", 2)
+        
+        # === SUPPLY 14: Supply Depot ===
+        if supply >= 14:
+            building_manager.set_requested_building_count_at_least("Terran_Supply_Depot", 1)
+        
+        # === Marines from first Barracks ===
+        if (building_manager.building_exists("Terran_Barracks") and
+            training_manager.unit_count("Terran_Marine") < 4):
+            training_manager.larva_train_distribution().set("Terran_Marine", 1.0)
+        
+        # === Marines from second Barracks ===
+        if (building_manager.building_count_including_planned("Terran_Barracks") >= 2 and
+            training_manager.unit_count("Terran_Marine") < 8):
+            training_manager.larva_train_distribution().set("Terran_Marine", 2.0)
+        
+        # === Academy for Medic support ===
+        if training_manager.unit_count("Terran_Marine") >= 6:
+            building_manager.set_requested_building_count_at_least("Terran_Academy", 1)
+        
+        # === Medics for healing ===
+        if building_manager.building_exists("Terran_Academy"):
+            if training_manager.unit_count("Terran_Medic") < 2:
+                training_manager.larva_train_distribution().set("Terran_Medic", 0.3)
+        
+        # === Infantry Weapons upgrade ===
+        if training_manager.unit_count("Terran_Marine") >= 4:
+            building_manager.request_upgrade("Terran_Infantry_Weapons")
+        
+        # === Continue attacking with marines ===
+        if training_manager.unit_count("Terran_Marine") >= 4:
+            self.attacking_ = True
+        
+        # === Supply management ===
+        if supply >= 22:
+            building_manager.set_requested_building_count_at_least("Terran_Supply_Depot", 2)
+        
+        # === Transition to Main BIO ===
+        if (training_manager.unit_count("Terran_Marine") >= 10 and
+            self.done_or_in_progress("Terran_Infantry_Weapons")):
+            self.mode_ = TerranMode.MAIN_BIO
+            return
     
     def is_defending_rush(self) -> bool:
         """Check defending against early aggression."""
         return self.mode_ == TerranMode.DEFEND_FAST_POOL
+    
+    def opening_TvP_1RaxFE(self) -> None:
+        """Handle TvP 1 Rax FE (Fast Expand) opening.
+        
+        1 Barracks Fast Expand vs Protoss.
+        """
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        from cppsource.TrainingManager import TrainingManager
+        
+        building_manager = BuildingPlacementManager.Instance()
+        training_manager = TrainingManager.Instance()
+        
+        supply = self.opening_supply_count()
+        
+        # === SUPPLY 12: Barracks ===
+        if supply >= 12:
+            building_manager.set_requested_building_count_at_least("Terran_Barracks", 1)
+        
+        # === SUPPLY 16: Command Center Expand ===
+        if supply >= 16:
+            building_manager.set_requested_building_count_at_least("Terran_Command_Center", 2)
+        
+        # === Marines for defense ===
+        if building_manager.building_exists("Terran_Barracks"):
+            if training_manager.unit_count("Terran_Marine") < 4:
+                training_manager.larva_train_distribution().set("Terran_Marine", 1.0)
+        
+        # === Supply Depot ===
+        if supply >= 14:
+            building_manager.set_requested_building_count_at_least("Terran_Supply_Depot", 1)
+        
+        # === Transition to Main ===
+        if (building_manager.building_exists("Terran_Command_Center", count=2) and
+            training_manager.unit_count("Terran_Marine") >= 6):
+            self.mode_ = TerranMode.MAIN_BIO
+    
+    def opening_TvT_2FactVults(self) -> None:
+        """Handle TvT 2 Factory Vultures opening.
+        
+        Vulture harassment with 2 factories vs Terran.
+        """
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        from cppsource.TrainingManager import TrainingManager
+        
+        building_manager = BuildingPlacementManager.Instance()
+        training_manager = TrainingManager.Instance()
+        
+        supply = self.opening_supply_count()
+        
+        # === SUPPLY 12-14: First Barracks ===
+        if supply >= 12:
+            building_manager.set_requested_building_count_at_least("Terran_Barracks", 1)
+        
+        # === SUPPLY 14-16: Factory ===
+        if supply >= 14:
+            building_manager.set_requested_building_count_at_least("Terran_Factory", 1)
+        
+        # === SUPPLY 16: Second Factory ===
+        if supply >= 18:
+            building_manager.set_requested_building_count_at_least("Terran_Factory", 2)
+        
+        # === Marines early ===
+        if building_manager.building_exists("Terran_Barracks"):
+            if training_manager.unit_count("Terran_Marine") < 2:
+                training_manager.larva_train_distribution().set("Terran_Marine", 0.5)
+        
+        # === Vultures from Factory ===
+        if (building_manager.building_exists("Terran_Factory") and
+            training_manager.unit_count("Terran_Vulture") < 6):
+            training_manager.larva_train_distribution().set("Terran_Vulture", 1.0)
+        
+        # === Attack with vultures ===
+        if training_manager.unit_count("Terran_Vulture") >= 4:
+            self.attacking_ = True
+        
+        # === Transition ===
+        if training_manager.unit_count("Terran_Vulture") >= 8:
+            self.mode_ = TerranMode.MAIN_MECH

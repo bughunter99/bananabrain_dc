@@ -160,10 +160,130 @@ class ZergStrategy(Strategy):
     
     def frame_inner(self) -> None:
         """Execute Zerg strategy logic each frame."""
-        if self._opening == kZvZ_9PoolSpire:
-            self.opening_ZvZ_9poolspire()
+        # Handle by opening during opening phase
+        if self.mode_ == ZergMode.OPENING:
+            if self._opening == kZvZ_9PoolSpire:
+                self.opening_ZvZ_9poolspire()
+            else:
+                self.update_stage()
+        
+        # Handle main strategies
+        elif self.mode_ == ZergMode.MAIN_ZVZ:
+            self.main_ZvZ()
+        elif self.mode_ == ZergMode.DEFEND_FAST_POOL:
+            self.defend_fast_pool()
+        elif self.mode_ == ZergMode.MAIN_MUTA_HYDRA_LURKER_LING:
+            self.main_muta_hydra()
         else:
             self.update_stage()
+    
+    def main_ZvZ(self) -> None:
+        """Handle MAIN_ZVZ strategy - sustained mutalisk harassment."""
+        from cppsource.TrainingManager import TrainingManager
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        from cppsource.Tactics import TacticsManager
+        
+        training_manager = TrainingManager.Instance()
+        building_manager = BuildingPlacementManager.Instance()
+        tactics = TacticsManager.Instance()
+        
+        # Continue mutalisk production
+        mutalisk_count = training_manager.unit_count("Zerg_Mutalisk")
+        if mutalisk_count < 12:
+            training_manager.larva_train_distribution().set("Zerg_Mutalisk", 1.0)
+        
+        # Expand to 3 bases if ahead
+        if mutalisk_count >= 6 and tactics.enemy_pressure() == "low":
+            building_manager.set_requested_building_count_at_least("Zerg_Hatchery", 3)
+        
+        # Add hydras for anti-air
+        if mutalisk_count >= 8:
+            if training_manager.unit_count("Zerg_Hydralisk") < 6:
+                training_manager.larva_train_distribution().set("Zerg_Hydralisk", 0.5)
+        
+        # Continue attacking
+        if tactics.should_attack():
+            self.attacking_ = True
+        
+        # Late game transition
+        if mutalisk_count >= 15 and training_manager.unit_count("Zerg_Hydralisk") >= 8:
+            self.mode_ = ZergMode.MAIN_ZVZ_LATE_GAME
+    
+    def defend_fast_pool(self) -> None:
+        """Handle DEFEND_FAST_POOL strategy - defend against early pool pressure."""
+        from cppsource.TrainingManager import TrainingManager
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        from cppsource.OpponentModel import OpponentModel
+        
+        training_manager = TrainingManager.Instance()
+        building_manager = BuildingPlacementManager.Instance()
+        opponent_model = OpponentModel.Instance()
+        
+        supply = self.opening_supply_count()
+        
+        # === Emergency Sunken Colonies ===
+        if supply <= 16:
+            # Build sunkens at choke points
+            sunken_count = self.fast_pool_sunken_count_
+            if sunken_count < 3:
+                building_manager.set_requested_building_count_at_least("Zerg_Sunken_Colony", min(3, sunken_count + 1))
+        
+        # === Defense Zerglings ===
+        zergling_count = training_manager.unit_count("Zerg_Zergling")
+        if zergling_count < 8:
+            training_manager.larva_train_distribution().set("Zerg_Zergling", 1.0)
+        
+        # === Get to Lair for Overlord armor ===
+        if supply >= 20:
+            building_manager.set_requested_building_count_at_least("Zerg_Lair", 1)
+        
+        # === Overlord armor upgrade ===
+        if building_manager.building_exists("Zerg_Lair"):
+            building_manager.request_upgrade("Overlord_Armor")
+        
+        # === Counter based on enemy ===
+        enemy_opening = opponent_model.enemy_opening()
+        
+        # If early zerglings coming, focus defense
+        if "4_5pool" in enemy_opening.lower():
+            self.fast_pool_sunken_count_ = 3
+            # Keep producing zerglings
+            training_manager.larva_train_distribution().clear()
+            training_manager.larva_train_distribution().set("Zerg_Zergling", 1.0)
+        
+        # === Transition to main when safe ===
+        if (zergling_count >= 8 and 
+            building_manager.building_count_including_planned("Zerg_Sunken_Colony") >= 2):
+            self.mode_ = ZergMode.MAIN_ZVZ
+    
+    def main_muta_hydra(self) -> None:
+        """Handle MAIN_MUTA_HYDRA_LURKER_LING - mixed composition strategy."""
+        from cppsource.TrainingManager import TrainingManager
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        
+        training_manager = TrainingManager.Instance()
+        building_manager = BuildingPlacementManager.Instance()
+        
+        # Balance mixed composition
+        mutalisk_count = training_manager.unit_count("Zerg_Mutalisk")
+        hydralisk_count = training_manager.unit_count("Zerg_Hydralisk")
+        
+        # Target ratio: 2 mutalisks per 1 hydralisk
+        if mutalisk_count < hydralisk_count * 2 + 2:
+            training_manager.larva_train_distribution().set("Zerg_Mutalisk", 0.7)
+        else:
+            training_manager.larva_train_distribution().set("Zerg_Hydralisk", 0.5)
+        
+        # Add zerglings as needed
+        zergling_count = training_manager.unit_count("Zerg_Zergling")
+        if zergling_count < 6:
+            training_manager.larva_train_distribution().set("Zerg_Zergling", 0.3)
+        
+        # Lurker support
+        if building_manager.building_exists("Zerg_Lair"):
+            lurker_count = training_manager.unit_count("Zerg_Lurker")
+            if lurker_count < 3:
+                training_manager.larva_train_distribution().set("Zerg_Lurker", 0.2)
     
     def update_stage(self) -> None:
         """Update Zerg stage."""
@@ -399,3 +519,87 @@ class ZergStrategy(Strategy):
     def expect_dark_templars(self) -> bool:
         """Predict DT usage (always False for Zerg)."""
         return False
+    
+    def opening_ZvT_2hatchmuta(self) -> None:
+        """Handle ZvT 2 Hatch Mutalisk opening.
+        
+        Early mutalisk pressure vs Terran with 2 hatcheries.
+        """
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        from cppsource.TrainingManager import TrainingManager
+        
+        building_manager = BuildingPlacementManager.Instance()
+        training_manager = TrainingManager.Instance()
+        
+        supply = self.opening_supply_count()
+        
+        # === SUPPLY 12: Request Extractor ===
+        if supply >= 12:
+            building_manager.set_requested_building_count_at_least("Zerg_Extractor", 1)
+        
+        # === SUPPLY 13: Request Second Hatchery ===
+        if supply >= 13:
+            building_manager.set_requested_building_count_at_least("Zerg_Hatchery", 2)
+        
+        # === Request Lair (need second Hatchery) ===
+        if building_manager.building_exists("Zerg_Hatchery", count=2):
+            building_manager.set_requested_building_count_at_least("Zerg_Lair", 1)
+        
+        # === Request Spire (need Lair) ===
+        if building_manager.building_exists("Zerg_Lair"):
+            building_manager.set_requested_building_count_at_least("Zerg_Spire", 1)
+        
+        # === Train Mutalisks ===
+        if building_manager.building_exists("Zerg_Spire"):
+            if training_manager.unit_count("Zerg_Mutalisk") < 6:
+                training_manager.larva_train_distribution().set("Zerg_Mutalisk", 1.0)
+        
+        # === Transition ===
+        if training_manager.unit_count("Zerg_Mutalisk") >= 6:
+            self.mode_ = ZergMode.MAIN_MUTA_HYDRA_LURKER_LING
+    
+    def opening_ZvP_2hatchmuta(self) -> None:
+        """Handle ZvP 2 Hatch Mutalisk opening.
+        
+        Fast expand with mutas vs Protoss.
+        """
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        from cppsource.TrainingManager import TrainingManager
+        
+        building_manager = BuildingPlacementManager.Instance()
+        training_manager = TrainingManager.Instance()
+        
+        supply = self.opening_supply_count()
+        
+        # === SUPPLY 12-13: Second Hatchery + Extractor ===
+        if supply >= 12:
+            building_manager.set_requested_building_count_at_least("Zerg_Hatchery", 2)
+            building_manager.set_requested_building_count_at_least("Zerg_Extractor", 1)
+        
+        # === Request Lair ===
+        if (building_manager.building_exists("Zerg_Hatchery", count=2) and
+            building_manager.building_exists("Zerg_Extractor")):
+            building_manager.set_requested_building_count_at_least("Zerg_Lair", 1)
+        
+        # === Request Spire ===
+        if building_manager.building_exists("Zerg_Lair"):
+            building_manager.set_requested_building_count_at_least("Zerg_Spire", 1)
+        
+        # === Overlord Speed ===
+        if building_manager.building_exists("Zerg_Lair"):
+            building_manager.request_upgrade("Overlord_Speed")
+        
+        # === Scout with Overlord ===
+        overlord_speed = self.done_or_in_progress("Overlord_Speed")
+        if overlord_speed:
+            # Once speed is done, send overlord scout
+            pass
+        
+        # === Train Mutalisks ===
+        if building_manager.building_exists("Zerg_Spire"):
+            if training_manager.unit_count("Zerg_Mutalisk") < 8:
+                training_manager.larva_train_distribution().set("Zerg_Mutalisk", 1.0)
+        
+        # === Transition ===
+        if training_manager.unit_count("Zerg_Mutalisk") >= 8:
+            self.mode_ = ZergMode.MAIN_MUTA_HYDRA_LURKER_LING

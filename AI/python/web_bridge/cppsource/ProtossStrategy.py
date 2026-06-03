@@ -122,7 +122,164 @@ class ProtossStrategy(Strategy):
     
     def frame_inner(self) -> None:
         """Execute Protoss strategy logic each frame."""
-        self.update_stage()
+        # Handle opening phase
+        if self.mode_ == ProtossMode.OPENING:
+            if self._opening == kPvZ_SairDt:
+                self.opening_PvZ_SairDt()
+            else:
+                self.update_stage()
+        
+        # Handle main strategies
+        elif self.mode_ == ProtossMode.MAIN:
+            self.main_strategy()
+        elif self.mode_ == ProtossMode.DEFEND_FAST_POOL:
+            self.defend_fast_pool()
+        else:
+            self.update_stage()
+    
+    def main_strategy(self) -> None:
+        """Handle MAIN strategy - sustained tech and expansion."""
+        from cppsource.TrainingManager import TrainingManager
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        from cppsource.Tactics import TacticsManager
+        
+        training_manager = TrainingManager.Instance()
+        building_manager = BuildingPlacementManager.Instance()
+        tactics = TacticsManager.Instance()
+        
+        # Gateways for unit production
+        gateway_count = building_manager.building_count_including_planned("Protoss_Gateway")
+        if gateway_count < 4 and tactics.enemy_pressure() == "low":
+            building_manager.set_requested_building_count_at_least("Protoss_Gateway", 4)
+        
+        # Unit composition
+        zealot_count = training_manager.unit_count("Protoss_Zealot")
+        dragoon_count = training_manager.unit_count("Protoss_Dragoon")
+        
+        # Zealots with upgrades
+        if zealot_count < 6:
+            training_manager.larva_train_distribution().set("Protoss_Zealot", 0.5)
+        
+        # Dragoons for ranged support
+        if dragoon_count < 8:
+            training_manager.larva_train_distribution().set("Protoss_Dragoon", 1.0)
+        
+        # Tech buildings
+        if building_manager.building_exists("Protoss_Templar_Archives"):
+            # Continue DT production
+            dt_count = training_manager.unit_count("Protoss_Dark_Templar")
+            if dt_count < 4:
+                training_manager.larva_train_distribution().set("Protoss_Dark_Templar", 0.3)
+        
+        # Expansion
+        if tactics.enemy_pressure() == "low":
+            building_manager.set_requested_building_count_at_least("Protoss_Nexus", 2)
+        
+        # Armor and weapon upgrades
+        building_manager.request_upgrade("Protoss_Armor")
+        building_manager.request_upgrade("Protoss_Weapons")
+    
+    def defend_fast_pool(self) -> None:
+        """Handle DEFEND_FAST_POOL - defend against early Zerg pool."""
+        from cppsource.TrainingManager import TrainingManager
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        
+        training_manager = TrainingManager.Instance()
+        building_manager = BuildingPlacementManager.Instance()
+        
+        supply = self.opening_supply_count()
+        
+        # === Forge for cannon defense ===
+        if supply >= 14:
+            building_manager.set_requested_building_count_at_least("Protoss_Forge", 1)
+        
+        # === Cannons at chokepoint ===
+        if building_manager.building_exists("Protoss_Forge"):
+            building_manager.set_requested_building_count_at_least("Protoss_Photon_Cannon", 2)
+        
+        # === Zealots for defense ===
+        zealot_count = training_manager.unit_count("Protoss_Zealot")
+        if zealot_count < 6:
+            training_manager.larva_train_distribution().set("Protoss_Zealot", 1.0)
+        
+        # === Transition when safe ===
+        if (zealot_count >= 6 and
+            building_manager.building_count_including_planned("Protoss_Photon_Cannon") >= 2):
+            self.mode_ = ProtossMode.MAIN
+    
+    def opening_PvZ_SairDt(self) -> None:
+        """Handle PvZ SairDT opening.
+        
+        Sair (air) DT strategy - use early DTs + air units to pressure Zerg.
+        """
+        from cppsource.OpponentModel import OpponentModel
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        from cppsource.TrainingManager import TrainingManager
+        
+        opponent_model = OpponentModel.Instance()
+        building_manager = BuildingPlacementManager.Instance()
+        training_manager = TrainingManager.Instance()
+        
+        # Check for fast pool defense
+        if opponent_model.enemy_opening() == "Z_4_5Pool":
+            self.mode_ = ProtossMode.DEFEND_FAST_POOL
+            return
+        
+        # Get current supply
+        supply = self.opening_supply_count()
+        
+        # === SUPPLY 9: Gateway ===
+        if supply >= 9:
+            building_manager.set_requested_building_count_at_least("Protoss_Gateway", 1)
+        
+        # === SUPPLY 12-14: Cyber Core ===
+        if supply >= 12:
+            building_manager.set_requested_building_count_at_least("Protoss_Cybernetics_Core", 1)
+        
+        # === SUPPLY 13: Assimilator ===
+        if supply >= 13:
+            building_manager.set_requested_building_count_at_least("Protoss_Assimilator", 1)
+        
+        # === Gateway Zealots ===
+        if (building_manager.building_exists("Protoss_Gateway") and
+            training_manager.unit_count("Protoss_Zealot") < 2):
+            training_manager.larva_train_distribution().set("Protoss_Zealot", 1.0)
+        
+        # === Stargate (for early corsairs/carriers) ===
+        if (building_manager.building_count_including_planned("Protoss_Assimilator") >= 1 and
+            self.done_or_in_progress("Protoss_Leg_Enhancements")):
+            building_manager.set_requested_building_count_at_least("Protoss_Stargate", 1)
+        
+        # === Leg Enhancements for Zealots ===
+        if training_manager.unit_count("Protoss_Zealot") >= 2:
+            building_manager.request_upgrade("Protoss_Leg_Enhancements")
+        
+        # === Dark Templar Tech ===
+        if (building_manager.building_count_including_planned("Protoss_Cybernetics_Core") >= 1 and
+            building_manager.building_count_including_planned("Protoss_Assimilator") >= 1):
+            building_manager.set_requested_building_count_at_least("Protoss_Templar_Archives", 1)
+        
+        # === Dark Templars ===
+        if building_manager.building_exists("Protoss_Templar_Archives"):
+            # Limit DTs while keeping them trained
+            if training_manager.unit_count("Protoss_Dark_Templar") < 3:
+                training_manager.larva_train_distribution().set("Protoss_Dark_Templar", 0.5)
+        
+        # === Dragoons ===
+        if (self.done_or_in_progress("Protoss_Leg_Enhancements") and
+            training_manager.unit_count("Protoss_Dragoon") < 4):
+            training_manager.larva_train_distribution().set("Protoss_Dragoon", 1.0)
+        
+        # === Expansion ===
+        if (building_manager.building_exists("Protoss_Templar_Archives") and
+            training_manager.unit_count("Protoss_Zealot") >= 4):
+            building_manager.set_requested_building_count_at_least("Protoss_Nexus", 2)
+        
+        # === Transition to Main ===
+        if (training_manager.unit_count("Protoss_Dark_Templar") >= 2 and
+            training_manager.unit_count("Protoss_Dragoon") >= 4):
+            self.mode_ = ProtossMode.MAIN
+            return
     
     def update_stage(self) -> None:
         """Update Protoss stage."""
@@ -135,3 +292,87 @@ class ProtossStrategy(Strategy):
     def expect_dark_templars(self) -> bool:
         """Predict DT usage by Protoss opponent."""
         return "dt" in self._opening.lower()
+    
+    def opening_PvT_FFE(self) -> None:
+        """Handle PvT FFE (Fast Forge Expand) opening.
+        
+        Forge first expand - defensive expansion with cannons.
+        """
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        from cppsource.TrainingManager import TrainingManager
+        
+        building_manager = BuildingPlacementManager.Instance()
+        training_manager = TrainingManager.Instance()
+        
+        supply = self.opening_supply_count()
+        
+        # === SUPPLY 12: Forge ===
+        if supply >= 12:
+            building_manager.set_requested_building_count_at_least("Protoss_Forge", 1)
+        
+        # === SUPPLY 16: Nexus Expansion ===
+        if supply >= 16:
+            building_manager.set_requested_building_count_at_least("Protoss_Nexus", 2)
+        
+        # === Photon Cannons ===
+        if building_manager.building_exists("Protoss_Forge"):
+            building_manager.set_requested_building_count_at_least("Protoss_Photon_Cannon", 3)
+        
+        # === Zealots for defense ===
+        zealot_count = training_manager.unit_count("Protoss_Zealot")
+        if zealot_count < 4:
+            training_manager.larva_train_distribution().set("Protoss_Zealot", 1.0)
+        
+        # === Tech to gateway ===
+        if building_manager.building_exists("Protoss_Gateway"):
+            building_manager.set_requested_building_count_at_least("Protoss_Cybernetics_Core", 1)
+        
+        # === Dragoons ===
+        if (building_manager.building_exists("Protoss_Cybernetics_Core") and
+            training_manager.unit_count("Protoss_Dragoon") < 3):
+            training_manager.larva_train_distribution().set("Protoss_Dragoon", 1.0)
+        
+        # === Transition ===
+        if (training_manager.unit_count("Protoss_Zealot") >= 4 and
+            building_manager.building_exists("Protoss_Nexus", count=2)):
+            self.mode_ = ProtossMode.MAIN
+    
+    def opening_PvP_1012Gate(self) -> None:
+        """Handle PvP 10/12 Gateway opening.
+        
+        Early gateway attack vs Protoss.
+        """
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        from cppsource.TrainingManager import TrainingManager
+        
+        building_manager = BuildingPlacementManager.Instance()
+        training_manager = TrainingManager.Instance()
+        
+        supply = self.opening_supply_count()
+        
+        # === SUPPLY 10-12: Gateways ===
+        if supply >= 10:
+            building_manager.set_requested_building_count_at_least("Protoss_Gateway", 2)
+        
+        # === Zealots ===
+        if building_manager.building_exists("Protoss_Gateway"):
+            if training_manager.unit_count("Protoss_Zealot") < 6:
+                training_manager.larva_train_distribution().set("Protoss_Zealot", 1.0)
+        
+        # === Cyber Core ===
+        if (building_manager.building_exists("Protoss_Gateway", count=2) and
+            training_manager.unit_count("Protoss_Zealot") >= 3):
+            building_manager.set_requested_building_count_at_least("Protoss_Cybernetics_Core", 1)
+        
+        # === Dragoons ===
+        if building_manager.building_exists("Protoss_Cybernetics_Core"):
+            if training_manager.unit_count("Protoss_Dragoon") < 4:
+                training_manager.larva_train_distribution().set("Protoss_Dragoon", 0.5)
+        
+        # === Attack ===
+        if training_manager.unit_count("Protoss_Zealot") >= 4:
+            self.attacking_ = True
+        
+        # === Transition ===
+        if training_manager.unit_count("Protoss_Zealot") >= 6:
+            self.mode_ = ProtossMode.MAIN
