@@ -61,13 +61,6 @@ class PathFinder:
         """Clear pathfinding cache."""
         self.ramp_high_ground_cache_.clear()
 
-
-from typing import Any, ClassVar, Dict, List, Optional, Tuple
-
-
-class PathFinder:
-    _instance: ClassVar[Optional["PathFinder"]] = None
-
     def __init__(self) -> None:
         self.small_chokepoints_closed_ = False
         self.ramp_high_ground_: Dict[Any, Tuple[int, int]] = {}

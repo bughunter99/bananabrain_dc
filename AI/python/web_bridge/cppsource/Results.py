@@ -153,13 +153,6 @@ class ResultStore:
         pass
 
 
-
-from collections import defaultdict
-from dataclasses import dataclass
-import json
-from typing import Any, Dict, Iterable, List, Optional, TextIO
-
-
 @dataclass
 class Result:
     opening: str = "unknown"

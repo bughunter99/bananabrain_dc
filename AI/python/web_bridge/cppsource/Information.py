@@ -166,6 +166,60 @@ class InformationManager:
         """Get enemy units."""
         return self.enemy_units_
     
+    def neutral_units(self) -> List[InformationUnit]:
+        """Get neutral units."""
+        return self.neutral_units_
+    
+    def enemy_count(self, unit_type: str) -> int:
+        """Get count of specific enemy unit type."""
+        return self.enemy_count_.get(unit_type, 0)
+    
+    def enemy_completed_count(self, unit_type: str) -> int:
+        """Get count of completed enemy unit type."""
+        return self.enemy_completed_count_.get(unit_type, 0)
+    
+    def enemy_completed_exists(self, unit_type: str) -> bool:
+        """Check if completed enemy unit type exists."""
+        return self.enemy_completed_count_.get(unit_type, 0) > 0
+    
+    def enemy_building_seen(self) -> bool:
+        """Check if any enemy building has been seen."""
+        return self.enemy_building_seen_
+    
+    def on_unit_destroy(self, unit: Any) -> None:
+        """Called when a unit is destroyed."""
+        pass
+    
+    def on_unit_discover(self, unit: Any) -> None:
+        """Called when a unit is discovered."""
+        pass
+    
+    def on_unit_evade(self, unit: Any) -> None:
+        """Called when a unit evades."""
+        pass
+    
+    def draw(self) -> None:
+        """Draw debug information."""
+        pass
+        
+        for enemy in self.enemy_units_:
+            unit_type = enemy.type
+            self.enemy_count_[unit_type] = self.enemy_count_.get(unit_type, 0) + 1
+            if enemy.is_completed():
+                self.enemy_completed_count_[unit_type] = self.enemy_completed_count_.get(unit_type, 0) + 1
+    
+    def all_units(self) -> Dict[int, InformationUnit]:
+        """Get all units."""
+        return self.all_units_
+    
+    def my_units(self) -> List[InformationUnit]:
+        """Get my units."""
+        return self.my_units_
+    
+    def enemy_units(self) -> List[InformationUnit]:
+        """Get enemy units."""
+        return self.enemy_units_
+    
     def enemy_count(self, unit_type: str) -> int:
         """Get count of specific enemy unit type."""
         return self.enemy_count_.get(unit_type, 0)
