@@ -415,3 +415,106 @@ class TerranStrategy(Strategy):
         # === Transition ===
         if training_manager.unit_count("Terran_Vulture") >= 8:
             self.mode_ = TerranMode.MAIN_MECH
+    
+    def opening_TvZ_14CC(self) -> None:
+        """Handle TvZ 14 CC - early expansion."""
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        from cppsource.TrainingManager import TrainingManager
+        
+        building_manager = BuildingPlacementManager.Instance()
+        training_manager = TrainingManager.Instance()
+        
+        supply = self.opening_supply_count()
+        
+        # === Barracks ===
+        if supply >= 12:
+            building_manager.set_requested_building_count_at_least("Terran_Barracks", 1)
+        
+        # === Early CC expand ===
+        if supply >= 14:
+            building_manager.set_requested_building_count_at_least("Terran_Command_Center", 2)
+        
+        # === Marines ===
+        if building_manager.building_exists("Terran_Barracks"):
+            if training_manager.unit_count("Terran_Marine") < 6:
+                training_manager.larva_train_distribution().set("Terran_Marine", 1.0)
+        
+        # === Supply ===
+        if supply >= 22:
+            building_manager.set_requested_building_count_at_least("Terran_Supply_Depot", 2)
+        
+        # === Transition ===
+        if (building_manager.building_exists("Terran_Command_Center", count=2) and
+            training_manager.unit_count("Terran_Marine") >= 8):
+            self.mode_ = TerranMode.MAIN_BIO
+    
+    def opening_TvP_14CC(self) -> None:
+        """Handle TvP 14 CC - macro expand vs Protoss."""
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        from cppsource.TrainingManager import TrainingManager
+        
+        building_manager = BuildingPlacementManager.Instance()
+        training_manager = TrainingManager.Instance()
+        
+        supply = self.opening_supply_count()
+        
+        # === Barracks ===
+        if supply >= 12:
+            building_manager.set_requested_building_count_at_least("Terran_Barracks", 1)
+        
+        # === Natural expansion ===
+        if supply >= 14:
+            building_manager.set_requested_building_count_at_least("Terran_Command_Center", 2)
+        
+        # === Marines for defense ===
+        if building_manager.building_exists("Terran_Barracks"):
+            if training_manager.unit_count("Terran_Marine") < 4:
+                training_manager.larva_train_distribution().set("Terran_Marine", 1.0)
+        
+        # === Continue building ===
+        if (building_manager.building_exists("Terran_Command_Center", count=2) and
+            supply >= 20):
+            building_manager.set_requested_building_count_at_least("Terran_Barracks", 2)
+        
+        # === Transition ===
+        if (building_manager.building_exists("Terran_Barracks", count=2) and
+            training_manager.unit_count("Terran_Marine") >= 8):
+            self.mode_ = TerranMode.MAIN_BIO
+    
+    def opening_TvT_1FactFE(self) -> None:
+        """Handle TvT 1 Fact FE - Factory with expansion."""
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        from cppsource.TrainingManager import TrainingManager
+        
+        building_manager = BuildingPlacementManager.Instance()
+        training_manager = TrainingManager.Instance()
+        
+        supply = self.opening_supply_count()
+        
+        # === Early Factory ===
+        if supply >= 12:
+            building_manager.set_requested_building_count_at_least("Terran_Factory", 1)
+        
+        # === Barracks ===
+        if supply >= 14:
+            building_manager.set_requested_building_count_at_least("Terran_Barracks", 1)
+        
+        # === Expansion ===
+        if (building_manager.building_exists("Terran_Factory") and
+            training_manager.unit_count("Terran_Marine") >= 2):
+            building_manager.set_requested_building_count_at_least("Terran_Command_Center", 2)
+        
+        # === Marines from barracks ===
+        if building_manager.building_exists("Terran_Barracks"):
+            if training_manager.unit_count("Terran_Marine") < 4:
+                training_manager.larva_train_distribution().set("Terran_Marine", 0.5)
+        
+        # === Vultures from factory ===
+        if building_manager.building_exists("Terran_Factory"):
+            if training_manager.unit_count("Terran_Vulture") < 4:
+                training_manager.larva_train_distribution().set("Terran_Vulture", 0.5)
+        
+        # === Transition ===
+        if (building_manager.building_exists("Terran_Command_Center", count=2) and
+            training_manager.unit_count("Terran_Vulture") >= 4):
+            self.mode_ = TerranMode.MAIN_MECH

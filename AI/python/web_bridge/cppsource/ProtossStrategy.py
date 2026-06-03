@@ -376,3 +376,76 @@ class ProtossStrategy(Strategy):
         # === Transition ===
         if training_manager.unit_count("Protoss_Zealot") >= 6:
             self.mode_ = ProtossMode.MAIN
+    
+    def opening_PvZ_10_12Gate(self) -> None:
+        """Handle PvZ 10/12 Gate - gateway focus."""
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        from cppsource.TrainingManager import TrainingManager
+        
+        building_manager = BuildingPlacementManager.Instance()
+        training_manager = TrainingManager.Instance()
+        
+        supply = self.opening_supply_count()
+        
+        # === Gateways ===
+        if supply >= 10:
+            building_manager.set_requested_building_count_at_least("Protoss_Gateway", 2)
+        
+        # === Zealots ===
+        if building_manager.building_exists("Protoss_Gateway"):
+            if training_manager.unit_count("Protoss_Zealot") < 8:
+                training_manager.larva_train_distribution().set("Protoss_Zealot", 1.0)
+        
+        # === Leg Enhancements ===
+        if training_manager.unit_count("Protoss_Zealot") >= 3:
+            building_manager.request_upgrade("Protoss_Leg_Enhancements")
+        
+        # === Cyber for dragoons ===
+        if (training_manager.unit_count("Protoss_Zealot") >= 5 and
+            self.done_or_in_progress("Protoss_Leg_Enhancements")):
+            building_manager.set_requested_building_count_at_least("Protoss_Cybernetics_Core", 1)
+            if training_manager.unit_count("Protoss_Dragoon") < 3:
+                training_manager.larva_train_distribution().set("Protoss_Dragoon", 0.5)
+        
+        # === Attack ===
+        if training_manager.unit_count("Protoss_Zealot") >= 6:
+            self.attacking_ = True
+        
+        # === Transition ===
+        if training_manager.unit_count("Protoss_Zealot") >= 8:
+            self.mode_ = ProtossMode.MAIN
+    
+    def opening_PvT_1012Gate(self) -> None:
+        """Handle PvT 10/12 Gate - gateway attack."""
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        from cppsource.TrainingManager import TrainingManager
+        
+        building_manager = BuildingPlacementManager.Instance()
+        training_manager = TrainingManager.Instance()
+        
+        supply = self.opening_supply_count()
+        
+        # === Early Gateways ===
+        if supply >= 10:
+            building_manager.set_requested_building_count_at_least("Protoss_Gateway", 2)
+        
+        # === Zealots with Leg Enhancements ===
+        if building_manager.building_exists("Protoss_Gateway"):
+            if training_manager.unit_count("Protoss_Zealot") < 6:
+                training_manager.larva_train_distribution().set("Protoss_Zealot", 1.0)
+        
+        if training_manager.unit_count("Protoss_Zealot") >= 2:
+            building_manager.request_upgrade("Protoss_Leg_Enhancements")
+        
+        # === Attack quickly ===
+        if training_manager.unit_count("Protoss_Zealot") >= 4:
+            self.attacking_ = True
+        
+        # === Continue building ===
+        if (training_manager.unit_count("Protoss_Zealot") >= 4 and
+            supply >= 12):
+            building_manager.set_requested_building_count_at_least("Protoss_Gateway", 3)
+        
+        # === Transition ===
+        if training_manager.unit_count("Protoss_Zealot") >= 8:
+            self.mode_ = ProtossMode.MAIN

@@ -603,3 +603,107 @@ class ZergStrategy(Strategy):
         # === Transition ===
         if training_manager.unit_count("Zerg_Mutalisk") >= 8:
             self.mode_ = ZergMode.MAIN_MUTA_HYDRA_LURKER_LING
+    
+    def opening_ZvZ_5Pool(self) -> None:
+        """Handle ZvZ 5 Pool - early pool rush."""
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        from cppsource.TrainingManager import TrainingManager
+        
+        building_manager = BuildingPlacementManager.Instance()
+        training_manager = TrainingManager.Instance()
+        
+        supply = self.opening_supply_count()
+        
+        # === SUPPLY 5: Pool ===
+        if supply >= 5:
+            building_manager.set_requested_building_count_at_least("Zerg_Spawning_Pool", 1)
+        
+        # === Zerglings immediately ===
+        if building_manager.building_exists("Zerg_Spawning_Pool"):
+            if training_manager.unit_count("Zerg_Zergling") < 12:
+                training_manager.larva_train_distribution().set("Zerg_Zergling", 1.0)
+        
+        # === Attack with full ling force ===
+        if training_manager.unit_count("Zerg_Zergling") >= 8:
+            self.attacking_ = True
+        
+        # === Transition ===
+        if training_manager.unit_count("Zerg_Zergling") >= 12:
+            self.mode_ = ZergMode.MAIN_ZVZ
+    
+    def opening_ZvT_MutaHydra(self) -> None:
+        """Handle ZvT Muta/Hydra - air + ground combo."""
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        from cppsource.TrainingManager import TrainingManager
+        
+        building_manager = BuildingPlacementManager.Instance()
+        training_manager = TrainingManager.Instance()
+        
+        supply = self.opening_supply_count()
+        
+        # === Build basics ===
+        if supply >= 10:
+            building_manager.set_requested_building_count_at_least("Zerg_Extractor", 1)
+        
+        if supply >= 12:
+            building_manager.set_requested_building_count_at_least("Zerg_Lair", 1)
+        
+        # === Spire ===
+        if building_manager.building_exists("Zerg_Lair"):
+            building_manager.set_requested_building_count_at_least("Zerg_Spire", 1)
+        
+        # === Hydra Den for ground ===
+        if building_manager.building_exists("Zerg_Lair"):
+            building_manager.set_requested_building_count_at_least("Zerg_Hydralisk_Den", 1)
+        
+        # === Train mixed ===
+        if building_manager.building_exists("Zerg_Spire"):
+            mutas = training_manager.unit_count("Zerg_Mutalisk")
+            hydras = training_manager.unit_count("Zerg_Hydralisk")
+            
+            if mutas < 6:
+                training_manager.larva_train_distribution().set("Zerg_Mutalisk", 0.6)
+            if hydras < 4:
+                training_manager.larva_train_distribution().set("Zerg_Hydralisk", 0.4)
+        
+        # === Transition ===
+        if (training_manager.unit_count("Zerg_Mutalisk") >= 6 and
+            training_manager.unit_count("Zerg_Hydralisk") >= 4):
+            self.mode_ = ZergMode.MAIN_MUTA_HYDRA_LURKER_LING
+    
+    def opening_ZvP_10Hatch(self) -> None:
+        """Handle ZvP 10 Hatch - macro expand vs Protoss."""
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        from cppsource.TrainingManager import TrainingManager
+        
+        building_manager = BuildingPlacementManager.Instance()
+        training_manager = TrainingManager.Instance()
+        
+        supply = self.opening_supply_count()
+        
+        # === SUPPLY 10: Second Hatchery ===
+        if supply >= 10:
+            building_manager.set_requested_building_count_at_least("Zerg_Hatchery", 2)
+        
+        # === Gas ===
+        if supply >= 12:
+            building_manager.set_requested_building_count_at_least("Zerg_Extractor", 1)
+        
+        # === Tech ===
+        if building_manager.building_exists("Zerg_Extractor"):
+            building_manager.set_requested_building_count_at_least("Zerg_Lair", 1)
+        
+        # === Build units gradually ===
+        zerglings = training_manager.unit_count("Zerg_Zergling")
+        if zerglings < 8:
+            training_manager.larva_train_distribution().set("Zerg_Zergling", 0.5)
+        
+        # === Expand further ===
+        if (building_manager.building_exists("Zerg_Hatchery", count=2) and
+            supply >= 18):
+            building_manager.set_requested_building_count_at_least("Zerg_Hatchery", 3)
+        
+        # === Transition ===
+        if (building_manager.building_exists("Zerg_Hatchery", count=3) and
+            training_manager.unit_count("Zerg_Zergling") >= 8):
+            self.mode_ = ZergMode.MAIN_ZVZ
