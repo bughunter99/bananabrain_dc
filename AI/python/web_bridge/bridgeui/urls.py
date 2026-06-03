@@ -2,29 +2,30 @@ from django.urls import path
 
 from . import views
 
-
 urlpatterns = [
     path("", views.dashboard, name="dashboard"),
     path("events/stream/", views.event_stream, name="event-stream"),
     path("api/state/", views.state_api, name="state-api"),
+    path("api/health/", views.health, name="health"),
+    path("api/runtime/start/", views.runtime_start, name="runtime-start"),
+    path("api/runtime/start", views.runtime_start, name="runtime-start-no-slash"),
+    path("api/runtime/stop/", views.runtime_stop, name="runtime-stop"),
+    path("api/runtime/stop", views.runtime_stop, name="runtime-stop-no-slash"),
+    path("api/runtime/status/", views.runtime_status, name="runtime-status"),
+    path("api/runtime/status", views.runtime_status, name="runtime-status-no-slash"),
+    path("api/runtime/catalog/", views.runtime_catalog, name="runtime-catalog"),
+    path("api/runtime/catalog", views.runtime_catalog, name="runtime-catalog-no-slash"),
+    path("api/runtime/select/", views.runtime_select, name="runtime-select"),
+    path("api/runtime/select", views.runtime_select, name="runtime-select-no-slash"),
+    path("api/runtime/clear/", views.runtime_clear, name="runtime-clear"),
+    path("api/runtime/clear", views.runtime_clear, name="runtime-clear-no-slash"),
+    path("api/runtime/reload-openings/", views.runtime_reload_openings, name="runtime-reload-openings"),
+    path("api/runtime/reload-openings", views.runtime_reload_openings, name="runtime-reload-openings-no-slash"),
+    path("api/runtime/results/", views.runtime_results, name="runtime-results"),
+    path("api/runtime/results", views.runtime_results, name="runtime-results-no-slash"),
+    path("api/actions/send/", views.action_send, name="action-send"),
+    path("api/actions/send", views.action_send, name="action-send-no-slash"),
     path("api/action/text/", views.send_text_action, name="send-text-action"),
     path("api/action/unit/", views.unit_action, name="unit-action"),
-    path("api/action/strategy/", views.strategy_action, name="strategy-action"),
     path("api/action/control/", views.control_action, name="control-action"),
-    path("api/sysinfo/", views.sysinfo_api, name="sysinfo-api"),
-    # Script editor
-    path("scripts/", views.scripts_page, name="scripts-page"),
-    path("api/scripts/<str:script_id>/", views.script_detail, name="script-detail"),
-    path("api/scripts/<str:script_id>/run/", views.script_run, name="script-run"),
-    # Launcher
-    path("api/launcher/status/", views.launcher_status, name="launcher-status"),
-    path("api/launcher/start/", views.launcher_start, name="launcher-start"),
-    path("api/launcher/stop/", views.launcher_stop, name="launcher-stop"),
-    path("api/launcher/inject/", views.launcher_inject, name="launcher-inject"),
-    # Event-driven Python strategy runtime
-    path("api/runtime/start/", views.runtime_start, name="runtime-start"),
-    path("api/runtime/stop/", views.runtime_stop, name="runtime-stop"),
-    path("api/runtime/select/", views.runtime_select, name="runtime-select"),
-    path("api/runtime/policy/", views.runtime_policy, name="runtime-policy"),
-    path("api/runtime/status/", views.runtime_status, name="runtime-status"),
 ]

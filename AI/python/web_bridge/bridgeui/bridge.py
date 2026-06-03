@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import queue
 import socket
@@ -14,52 +16,6 @@ UDP_HOST = "127.0.0.1"
 UDP_EVENT_PORT = 37000
 UDP_ACTION_PORT = 37001
 MAX_RECENT_EVENTS = 300
-USER_UNIT_OVERRIDE_SECONDS = 10.0
-
-REPRESENTATIVE_STRATEGIES = {
-    "Protoss": [
-        {"label": "자율 플레이", "opening": "auto_play", "summary": "종족 자동 감지, 경제·전투 전 과정 자율 운영"},
-        {"label": "PvZ 10/12 Gate", "opening": "PvZ_10/12gate", "summary": "무난한 기본 오프닝"},
-        {"label": "PvZ Bisu", "opening": "PvZ_bisu", "summary": "운영형 커세어/하이템플러 계열"},
-        {"label": "PvT 12 Nexus", "opening": "PvT_12nexus", "summary": "빠른 확장 중심"},
-        {"label": "PvP 3 Gate Robo", "opening": "PvP_3gaterobo", "summary": "로보틱스 압박"},
-        {"label": "PvU Forge", "opening": "PvU_forge", "summary": "범용 포지 기반 수비"},
-        {"label": "포지 더블넥", "opening": "PvU_forge_double_nexus", "cpp_opening": "PvU_forge", "summary": "포토캐논 수비 후 빠른 넥서스 확보"},
-        {"label": "질럿 러쉬", "opening": "PvU_zealot_rush", "summary": "가스 생략, 8~9 파일런 후 질럿 다수 생산"},
-        {"label": "다크 템플러", "opening": "PvU_dark_templar", "summary": "은폐 DT로 탐지 강제 및 피해"},
-        {"label": "리버 드랍", "opening": "PvU_reaver_drop", "summary": "셔틀+리버로 본진 일꾼/건물 파괴"},
-        {"label": "한방 러쉬", "opening": "PvU_one_punch", "summary": "질럿+스톰+아콘+리버 올인 타이밍"},
-        {"label": "앞마당 멀티", "opening": "PvU_natural_expand", "summary": "앞마당 넥서스 빠른 확장으로 자원 우위 확보"},
-    ],
-    "Terran": [
-        {"label": "자율 플레이", "opening": "auto_play", "summary": "종족 자동 감지, 경제·전투 전 과정 자율 운영"},
-        {"label": "TvZ 1 Rax FE", "opening": "TvZ_1raxfe", "summary": "정석 빠른 확장"},
-        {"label": "TvZ 2 Rax", "opening": "TvZ_2rax", "summary": "초반 압박"},
-        {"label": "TvT 1 Fact FE", "opening": "TvT_1factfe", "summary": "안정적인 메카 전개"},
-        {"label": "TvP Siege Expand", "opening": "TvP_siegeexpand", "summary": "탱크 중심 운영"},
-        {"label": "TvU 1 Fact", "opening": "TvU_1fact", "summary": "범용 팩토리 시작"},
-        {"label": "벙커링", "opening": "TvU_bunkering", "summary": "앞마당/입구 벙커+SCV 초반 올인"},
-        {"label": "FD 테란", "opening": "TvU_fd", "summary": "마린+메딕 견제 후 드랍쉽/벌처 확보"},
-        {"label": "메카닉", "opening": "TvU_mechanic", "summary": "탱크+벌처+골리앗 기계화 운영"},
-        {"label": "SK 테란", "opening": "TvU_sk", "summary": "바이오닉+베슬 마나 스킬 조합"},
-        {"label": "레이트 메카닉", "opening": "TvU_late_mechanic", "summary": "수비 후 발키리/배틀크루저 후반 물량"},
-        {"label": "앞마당 멀티", "opening": "TvU_natural_expand", "summary": "앞마당 커맨드센터 빠른 확장으로 자원 우위 확보"},
-    ],
-    "Zerg": [
-        {"label": "자율 플레이", "opening": "auto_play", "summary": "종족 자동 감지, 경제·전투 전 과정 자율 운영"},
-        {"label": "ZvZ 9 Pool Spire", "opening": "ZvZ_9poolspire", "summary": "뮤탈 전환형"},
-        {"label": "ZvT 3 Hatch Muta", "opening": "ZvT_3hatchmuta", "summary": "클래식 뮤탈 운영"},
-        {"label": "ZvT 9 Pool Lurker", "opening": "ZvT_9poollurker", "summary": "러커 타이밍"},
-        {"label": "ZvP 9734", "opening": "ZvP_9734", "summary": "대표 히드라 타이밍"},
-        {"label": "ZvU 9 Pool Speed", "opening": "ZvU_9poolspeed", "summary": "범용 스피드링"},
-        {"label": "3햇 빌드", "opening": "ZvU_3hatch", "summary": "해처리 3개 빠른 확보, 저글링+드론 물량"},
-        {"label": "저글링 럴커", "opening": "ZvU_ling_lurker", "summary": "저글링 기동성+럴커 범위공격 조합"},
-        {"label": "뮤탈 짤짤이", "opening": "ZvU_muta_micro", "summary": "뮤탈 다수로 일꾼 학살 및 본진 교란"},
-        {"label": "디파저그", "opening": "ZvU_defiler", "summary": "다크 스웜+플레이그로 방어선 붕괴"},
-        {"label": "퀸 둥지 러쉬", "opening": "ZvU_queen_lurker", "summary": "퀸 인스네어+브루들링으로 라인 붕괴"},
-        {"label": "앞마당 멀티", "opening": "ZvU_natural_expand", "summary": "앞마당 해처리 빠른 확장으로 자원 우위 확보"},
-    ],
-}
 
 
 def iso_now() -> str:
@@ -79,23 +35,16 @@ class UdpBridgeService:
             "connected": False,
             "last_event_at": None,
             "self_race": None,
+            "enemy_race": None,
             "enemy_count": None,
             "is_replay": None,
             "is_1v1": None,
             "is_ffa": None,
-            "opening": None,
-            "detected_opening": None,
-            "mode": None,
             "frame": -1,
             "minerals": None,
             "gas": None,
             "supply_used": None,
             "supply_total": None,
-            "manual_mode": None,
-            "python_mode": False,
-            "current_script_id": None,
-            "user_unit_overrides": {},
-            "last_error": None,
             "start_tile_x": -1,
             "start_tile_y": -1,
             "map_width_tiles": 128,
@@ -105,14 +54,24 @@ class UdpBridgeService:
             "geysers": [],
             "own_units": [],
             "enemy_units": [],
+            "enemy_opening": None,
+            "lost_worker_count": 0,
+            "sent_initial_scout": False,
+            "last_action": None,
+            "last_strategy_command": None,
+            "last_placement_policy": None,
+            "last_error": None,
+            "policy_running": False,
+            "strategy_opening": None,
+            "strategy_mode": None,
+            "strategy_late_game": None,
+            "strategy_decision": None,
         }
         self._subscribers = {}  # type: Dict[int, queue.Queue]
         self._subscriber_ids = count(1)
         self._event_ids = count(1)
-        self._event_handlers = {}  # type: Dict[int, Tuple[str, Any]]
-        self._handler_ids = count(1)
 
-    def start(self):
+    def start_listener(self) -> None:
         with self._lock:
             if self._running:
                 return
@@ -122,7 +81,23 @@ class UdpBridgeService:
             self._listener_thread = threading.Thread(target=self._listen_loop, daemon=True, name="UdpBridgeService")
             self._listener_thread.start()
 
-    def _listen_loop(self):
+    def stop_listener(self) -> None:
+        with self._lock:
+            self._running = False
+            recv_sock = self._recv_sock
+            send_sock = self._send_sock
+            self._recv_sock = None
+            self._send_sock = None
+
+        for sock in (recv_sock, send_sock):
+            if sock is None:
+                continue
+            try:
+                sock.close()
+            except OSError:
+                pass
+
+    def _listen_loop(self) -> None:
         recv_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         recv_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         recv_sock.bind((UDP_HOST, UDP_EVENT_PORT))
@@ -131,14 +106,15 @@ class UdpBridgeService:
 
         self.emit_local_event(
             "bridge_status",
-            {
-                "message": f"UDP bridge listening on {UDP_HOST}:{UDP_EVENT_PORT}",
-                "action_port": UDP_ACTION_PORT,
-            },
+            {"message": f"UDP bridge listening on {UDP_HOST}:{UDP_EVENT_PORT}", "action_port": UDP_ACTION_PORT},
         )
 
         try:
-            while self._running:
+            while True:
+                with self._lock:
+                    if not self._running:
+                        break
+
                 try:
                     data, _ = recv_sock.recvfrom(65507)
                 except socket.timeout:
@@ -149,9 +125,12 @@ class UdpBridgeService:
                     continue
 
                 try:
-                    decoded = json.loads(data.decode("utf-8"))
+                    decoded = json.loads(data.decode("utf-8", errors="replace"))
                 except Exception as exc:
                     self.emit_local_event("bridge_parse_error", {"message": str(exc)})
+                    continue
+
+                if not isinstance(decoded, dict):
                     continue
 
                 event = {
@@ -164,9 +143,12 @@ class UdpBridgeService:
                 }
                 self._record_event(event)
         finally:
-            recv_sock.close()
+            try:
+                recv_sock.close()
+            except OSError:
+                pass
 
-    def _record_event(self, event):
+    def _record_event(self, event: Dict[str, Any]) -> None:
         with self._lock:
             self._recent_events.append(event)
             self._state["connected"] = True
@@ -174,36 +156,19 @@ class UdpBridgeService:
             self._state["frame"] = event.get("frame", -1)
             self._apply_event_to_state(event)
             subscribers = list(self._subscribers.values())
-            handlers = [
-                handler
-                for event_name, handler in self._event_handlers.values()
-                if event_name == "*" or event_name == event.get("event")
-            ]
 
         envelope = {"kind": "event", "event": event}
         for subscriber in subscribers:
             subscriber.put(envelope)
-        for handler in handlers:
-            try:
-                handler(event)
-            except Exception:
-                # 콜백 오류는 브리지 수신 루프를 중단시키지 않는다.
-                pass
 
-    def _apply_event_to_state(self, event):
+    def _apply_event_to_state(self, event: Dict[str, Any]) -> None:
         payload = event.get("payload", {})
         event_name = event.get("event")
-        now = time.time()
-
-        # Drop expired user overrides on every state update.
-        overrides = self._state.get("user_unit_overrides") or {}
-        self._state["user_unit_overrides"] = {
-            k: v for k, v in overrides.items() if float(v) > now
-        }
 
         if event_name == "onStart":
             self._state["status"] = "game connected"
-            self._state["self_race"] = payload.get("self_race")
+            self._state["self_race"] = payload.get("race") or payload.get("self_race")
+            self._state["enemy_race"] = payload.get("enemy_race")
             self._state["enemy_count"] = payload.get("enemy_count")
             self._state["is_replay"] = payload.get("is_replay")
             self._state["start_tile_x"] = payload.get("start_tile_x", -1)
@@ -214,18 +179,23 @@ class UdpBridgeService:
             self._state["mineral_fields"] = payload.get("mineral_fields", [])
             self._state["geysers"] = payload.get("geysers", [])
             self._state["own_units"] = payload.get("units", [])
-        elif event_name == "onStart_initialized":
-            self._state["is_1v1"] = payload.get("is_1v1")
-            self._state["is_ffa"] = payload.get("is_ffa")
-            self._state["detected_opening"] = payload.get("opening")
+            if "own_units" in payload:
+                self._state["own_units"] = payload["own_units"]
+            self._state["enemy_units"] = payload.get("enemy_units", [])
+            if "enemy_units" in payload:
+                self._state["enemy_units"] = payload["enemy_units"]
         elif event_name == "onFrame":
+            if payload.get("race"):
+                self._state["self_race"] = payload.get("race")
+            if payload.get("enemy_race"):
+                self._state["enemy_race"] = payload.get("enemy_race")
+            if payload.get("enemy_count") is not None:
+                self._state["enemy_count"] = payload.get("enemy_count")
             self._state["minerals"] = payload.get("minerals")
             self._state["gas"] = payload.get("gas")
             self._state["supply_used"] = payload.get("supply_used")
             self._state["supply_total"] = payload.get("supply_total")
-            self._state["mode"] = payload.get("mode")
-            if "python_mode" in payload:
-                self._state["python_mode"] = payload["python_mode"]
+            self._state["strategy_mode"] = payload.get("mode", self._state.get("strategy_mode"))
             if "start_tile_x" in payload:
                 self._state["start_tile_x"] = payload["start_tile_x"]
             if "start_tile_y" in payload:
@@ -234,38 +204,144 @@ class UdpBridgeService:
                 self._state["own_units"] = payload["own_units"]
             if "enemy_units" in payload:
                 self._state["enemy_units"] = payload["enemy_units"]
+            inferred_enemy_opening = self._infer_enemy_opening_from_units()
+            if inferred_enemy_opening:
+                self._state["enemy_opening"] = inferred_enemy_opening
         elif event_name == "onEnd":
             self._state["status"] = "game ended"
             self._state["winner"] = payload.get("winner")
-            self._state["manual_mode"] = None
-            self._state["python_mode"] = False
-            self._state["current_script_id"] = None
-            self._state["user_unit_overrides"] = {}
             self._state["own_units"] = []
             self._state["enemy_units"] = []
-        elif event_name == "manual_mode_changed":
-            self._state["manual_mode"] = payload.get("manual_mode") == "true"
-        elif event_name == "python_mode_changed":
-            self._state["python_mode"] = payload.get("python_mode") == "true"
-        elif event_name == "script_status":
-            status = payload.get("status")
-            script_id = payload.get("script_id")
-            if status == "started":
-                self._state["current_script_id"] = script_id
-            elif status == "stopped" and self._state.get("current_script_id") == script_id:
-                self._state["current_script_id"] = None
+            self._state["policy_running"] = False
+        elif event_name == "onUnitDestroy":
+            destroyed_type = str(payload.get("type") or "")
+            destroyed_id = payload.get("id")
+            self._state["own_units"] = [unit for unit in self._state.get("own_units", []) if str(unit.get("id")) != str(destroyed_id)]
+            self._state["enemy_units"] = [unit for unit in self._state.get("enemy_units", []) if str(unit.get("id")) != str(destroyed_id)]
+            if destroyed_type in {"Protoss_Probe", "Terran_SCV", "Zerg_Drone"}:
+                own_unit_ids = {str(unit.get("id")) for unit in self._state.get("own_units", [])}
+                enemy_unit_ids = {str(unit.get("id")) for unit in self._state.get("enemy_units", [])}
+                if str(destroyed_id) not in enemy_unit_ids and str(destroyed_id) in own_unit_ids:
+                    self._state["lost_worker_count"] = int(self._state.get("lost_worker_count") or 0) + 1
+        elif event_name == "strategy_decision":
+            self._state["policy_running"] = True
+            self._state["strategy_opening"] = payload.get("opening")
+            self._state["strategy_mode"] = payload.get("mode")
+            self._state["strategy_late_game"] = payload.get("late_game_strategy")
+            self._state["worker_cap"] = payload.get("worker_cap")
+            self._state["strategy_decision"] = payload
+        elif event_name == "strategy_started":
+            self._state["policy_running"] = True
+        elif event_name == "strategy_stopped":
+            self._state["policy_running"] = False
+        elif event_name == "strategy_scout":
+            if payload.get("sent_initial_scout"):
+                self._state["sent_initial_scout"] = True
         elif event_name == "ui_action_sent":
-            action = payload.get("action") or {}
-            atype = action.get("type")
-            if atype in {"unit_move", "unit_stop", "unit_attack_move", "unit_attack_unit", "gather_unit", "build"}:
-                try:
-                    unit_id = int(action.get("unit_id"))
-                except (TypeError, ValueError):
-                    unit_id = None
-                if unit_id is not None:
-                    self._state["user_unit_overrides"][str(unit_id)] = now + USER_UNIT_OVERRIDE_SECONDS
+            action = payload.get("action") if isinstance(payload, dict) else None
+            if isinstance(action, dict):
+                self._state["last_action"] = action
+                action_type = str(action.get("type") or "")
+                if action_type == "strategy_command":
+                    self._state["last_strategy_command"] = action
+                elif action_type == "placement_policy":
+                    self._state["last_placement_policy"] = action
+        elif event_name == "ui_actions_sent":
+            actions = payload.get("actions") if isinstance(payload, dict) else None
+            if isinstance(actions, list) and actions:
+                last_action = next((item for item in reversed(actions) if isinstance(item, dict)), None)
+                if isinstance(last_action, dict):
+                    self._state["last_action"] = last_action
+                    action_type = str(last_action.get("type") or "")
+                    if action_type == "strategy_command":
+                        self._state["last_strategy_command"] = last_action
+                    elif action_type == "placement_policy":
+                        self._state["last_placement_policy"] = last_action
 
-    def emit_local_event(self, event_name, payload):
+    def send_actions(self, actions: List[Dict[str, Any]]) -> None:
+        payload = json.dumps(actions if len(actions) != 1 else actions[0], ensure_ascii=True)
+        self.send_raw(payload)
+        if len(actions) == 1:
+            self.emit_local_event("ui_action_sent", {"action": actions[0]})
+        else:
+            self.emit_local_event("ui_actions_sent", {"actions": actions, "count": len(actions)})
+
+    def send_raw(self, raw_json: str) -> None:
+        self.start_listener()
+        with self._lock:
+            send_sock = self._send_sock
+        if send_sock is None:
+            raise RuntimeError("Action socket is not initialized")
+        send_sock.sendto(raw_json.encode("utf-8"), (UDP_HOST, UDP_ACTION_PORT))
+
+    def send_action(self, action: Dict[str, Any]) -> None:
+        self.send_actions([action])
+
+    def _parse_unit_entries(self, value: Any) -> List[Dict[str, Any]]:
+        if not value:
+            return []
+        if isinstance(value, list):
+            return [item for item in value if isinstance(item, dict)]
+        text = str(value).strip()
+        if not text:
+            return []
+        entries: List[Dict[str, Any]] = []
+        for entry in text.split(";"):
+            parts = entry.strip().split(",")
+            if len(parts) < 2:
+                continue
+            try:
+                entries.append({"id": int(parts[0]), "type": parts[1]})
+            except ValueError:
+                continue
+        return entries
+
+    def _infer_enemy_opening_from_units(self) -> str:
+        units = self._parse_unit_entries(self._state.get("enemy_units"))
+        if not units:
+            return str(self._state.get("enemy_opening") or "")
+
+        counts: Dict[str, int] = {}
+        for unit in units:
+            unit_type = str(unit.get("type") or "")
+            if not unit_type:
+                continue
+            counts[unit_type] = counts.get(unit_type, 0) + 1
+
+        if counts.get("Protoss_Photon_Cannon", 0) > 0 or counts.get("Protoss_Forge", 0) > 0:
+            return "cannon"
+        if counts.get("Protoss_Gateway", 0) >= 2 and counts.get("Protoss_Cybernetics_Core", 0) > 0:
+            return "4gate"
+        if counts.get("Protoss_Dark_Templar", 0) > 0 or counts.get("Protoss_Templar_Archives", 0) > 0:
+            return "dt"
+
+        if counts.get("Terran_Marine", 0) >= 3 or counts.get("Terran_Barracks", 0) >= 2:
+            return "bio"
+        if counts.get("Terran_Factory", 0) > 0 or counts.get("Terran_Siege_Tank_Tank_Mode", 0) > 0:
+            return "mech"
+
+        if counts.get("Zerg_Mutalisk", 0) > 0 or counts.get("Zerg_Spire", 0) > 0:
+            return "muta"
+        if counts.get("Zerg_Lurker", 0) > 0 or counts.get("Zerg_Hydralisk_Den", 0) > 0:
+            return "lurker"
+        if counts.get("Zerg_Zergling", 0) > 0 or counts.get("Zerg_Spawning_Pool", 0) > 0:
+            return "pool"
+
+        return str(self._state.get("enemy_opening") or "")
+
+    def subscribe(self):
+        self.start_listener()
+        subscriber_id = next(self._subscriber_ids)
+        q = queue.Queue()
+        with self._lock:
+            self._subscribers[subscriber_id] = q
+        return subscriber_id, q
+
+    def unsubscribe(self, subscriber_id: int) -> None:
+        with self._lock:
+            self._subscribers.pop(subscriber_id, None)
+
+    def emit_local_event(self, event_name: str, payload: Dict[str, Any]) -> None:
         event = {
             "id": next(self._event_ids),
             "time": iso_now(),
@@ -274,65 +350,20 @@ class UdpBridgeService:
             "payload": payload,
             "source": "web",
         }
-        self._record_event(event)
-
-    def send_action(self, action, origin="ui"):
-        self.start()
-        payload = json.dumps(action, ensure_ascii=False).encode("utf-8")
         with self._lock:
-            send_sock = self._send_sock
-        if send_sock is None:
-            raise RuntimeError("Action socket is not initialized")
-        send_sock.sendto(payload, (UDP_HOST, UDP_ACTION_PORT))
-        if origin == "ui":
-            self.emit_local_event("ui_action_sent", {"action": action})
-        elif origin == "script":
-            self.emit_local_event("script_action_sent", {"action": action})
-        else:
-            self.emit_local_event("action_sent", {"action": action, "origin": origin})
+            self._recent_events.append(event)
+            self._apply_event_to_state(event)
+            subscribers = list(self._subscribers.values())
+        envelope = {"kind": "event", "event": event}
+        for subscriber in subscribers:
+            subscriber.put(envelope)
 
-    def subscribe(self):
-        self.start()
-        subscriber_id = next(self._subscriber_ids)
-        q = queue.Queue()
-        with self._lock:
-            self._subscribers[subscriber_id] = q
-        return subscriber_id, q
-
-    def unsubscribe(self, subscriber_id):
-        with self._lock:
-            self._subscribers.pop(subscriber_id, None)
-
-    def add_event_handler(self, event_name, handler):
-        self.start()
-        handler_id = next(self._handler_ids)
-        with self._lock:
-            self._event_handlers[handler_id] = (str(event_name or "*"), handler)
-        return handler_id
-
-    def remove_event_handler(self, handler_id):
-        with self._lock:
-            self._event_handlers.pop(handler_id, None)
-
-    def snapshot(self):
-        self.start()
+    def snapshot(self) -> Dict[str, Any]:
+        self.start_listener()
         with self._lock:
             state = deepcopy(self._state)
             events = list(self._recent_events)
-        race = state.get("self_race")
-        state["available_strategies"] = REPRESENTATIVE_STRATEGIES
-        state["current_strategies"] = REPRESENTATIVE_STRATEGIES.get(race, [])
         return {"state": state, "events": events}
 
 
-_service = None  # type: Optional[UdpBridgeService]
-_service_lock = threading.Lock()
-
-
-def get_bridge_service():
-    global _service
-    with _service_lock:
-        if _service is None:
-            _service = UdpBridgeService()
-        _service.start()
-        return _service
+bridge_service = UdpBridgeService()
