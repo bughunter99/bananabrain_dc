@@ -16,7 +16,6 @@ from typing import List, Optional
 from cppsource.Strategy import Strategy
 
 
-@dataclass
 class ProtossStrategy(Strategy):
     """Protoss-specific strategic decisions."""
     
@@ -33,6 +32,7 @@ class ProtossStrategy(Strategy):
     PVT_FFE = "PvT_ffe"
     PVT_10_12_GATE = "PvT_10/12gate"
     PVT_AGGRESSIVE = "PvT_aggressive"
+    PVT_EXPAND = "PvT_expand"
     
     # PvP openings
     PVP_1GATE = "PvP_1gate"
@@ -42,7 +42,6 @@ class ProtossStrategy(Strategy):
     
     def pick_strategy(self, is_1v1: bool) -> None:
         """Select Protoss strategy based on opponent."""
-        # Default to standard opening
         self._opening = self.PVT_2GATE
         self._mode = "standard"
     
@@ -50,6 +49,14 @@ class ProtossStrategy(Strategy):
         """Execute Protoss strategy logic each frame."""
         self.update_stage()
     
-    def frame(self) -> None:
-        """Execute frame logic."""
-        super().frame()
+    def update_stage(self) -> None:
+        """Update Protoss stage."""
+        pass
+    
+    def is_defending_rush(self) -> bool:
+        """Check defending against early aggression."""
+        return False
+    
+    def expect_dark_templars(self) -> bool:
+        """Predict DT usage by Protoss opponent."""
+        return "dt" in self._opening.lower()

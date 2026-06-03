@@ -15,7 +15,6 @@ from dataclasses import dataclass
 from cppsource.Strategy import Strategy
 
 
-@dataclass
 class TerranStrategy(Strategy):
     """Terran-specific strategic decisions."""
     
@@ -25,16 +24,19 @@ class TerranStrategy(Strategy):
     TVZ_3RAX = "TvZ_3rax"
     TVZ_WALL = "TvZ_wall"
     TVZ_EXPAND = "TvZ_expand"
+    TVZ_REAPER = "TvZ_reaper"
     
     # TvT openings
     TVT_STANDARD = "TvT_standard"
     TVT_EXPAND = "TvT_expand"
     TVT_SCVS = "TvT_scvs"
+    TVT_SCVS_RUSH = "TvT_scvs_rush"
     
     # TvP openings
     TVP_2RAXFE = "TvP_2raxfe"
     TVP_EXPAND = "TvP_expand"
     TVP_BBS = "TvP_bbs"
+    TVP_AGGRESSION = "TvP_aggression"
     
     def pick_strategy(self, is_1v1: bool) -> None:
         """Select Terran strategy based on opponent."""
@@ -45,6 +47,10 @@ class TerranStrategy(Strategy):
         """Execute Terran strategy logic each frame."""
         self.update_stage()
     
-    def frame(self) -> None:
-        """Execute frame logic."""
-        super().frame()
+    def update_stage(self) -> None:
+        """Update Terran stage."""
+        pass
+    
+    def is_defending_rush(self) -> bool:
+        """Check defending against early aggression."""
+        return False

@@ -46,6 +46,10 @@ class ZergStrategy(Strategy):
         """Execute Zerg strategy logic each frame."""
         self.update_stage()
     
-    def frame(self) -> None:
-        """Execute frame logic."""
-        super().frame()
+    def update_stage(self) -> None:
+        """Update Zerg stage."""
+        pass
+    
+    def expect_lurkers(self) -> bool:
+        """Predict Lurker usage by Zerg opponent."""
+        return "hydralisk" in self._opening.lower() or "defiler" in self._opening.lower()
