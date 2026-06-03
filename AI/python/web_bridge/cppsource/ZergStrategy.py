@@ -294,16 +294,103 @@ class ZergStrategy(Strategy):
             training_manager.larva_train_distribution().set("Zerg_Drone", 1.0)
     
     def is_enemy_offense_larger_than_defense(self) -> bool:
-        """Check if enemy has overwhelming offense."""
+        """Check if enemy has overwhelming offense vs own defense."""
+        from cppsource.Information import InformationManager
+        from cppsource.Tactics import TacticsManager
+        
+        info = InformationManager.Instance()
+        tactics = TacticsManager.Instance()
+        
+        # Check if main enemy cluster exists and is threatening
+        enemy_pressure = tactics.enemy_pressure()
+        if enemy_pressure == "critical":
+            return True
+        if enemy_pressure == "high":
+            # Check actual army counts
+            enemy_units = info.enemy_units()
+            own_units = info.my_units()
+            
+            enemy_count = len(enemy_units) if enemy_units else 0
+            own_count = len(own_units) if own_units else 0
+            
+            # If enemy has 2x more units, we're overwhelmed
+            return enemy_count > own_count * 2
+        
         return False
     
     def opening_lost_too_many_workers(self) -> bool:
         """Check if lost too many workers during opening."""
-        return False
+        from cppsource.Information import InformationManager
+        
+        info = InformationManager.Instance()
+        
+        # Get current drone count
+        current_drones = info.count_unit("Zerg_Drone")
+        
+        # Expected drones for opening stage
+        # 9PoolSpire typically has 9 drones by mid-game
+        # If we have less than 4, something went wrong
+        expected_drones = 9
+        acceptable_loss = 5
+        
+        return current_drones < (expected_drones - acceptable_loss)
     
     def attack_check_condition(self) -> None:
-        """Check if should continue/end attack."""
-        pass
+        """Check if should continue/end attack during opening."""
+        from cppsource.Information import InformationManager
+        from cppsource.Tactics import TacticsManager
+        
+        info = InformationManager.Instance()
+        tactics = TacticsManager.Instance()
+        
+        # Get zergling count
+        zergling_count = info.count_unit("Zerg_Zergling")
+        
+        # End attack if lost all zerglings
+        if zergling_count == 0:
+            self.attacking_ = False
+            return
+        
+        # End attack if enemy is too strong
+        if tactics.enemy_pressure() == "critical":
+            self.attacking_ = False
+            return
+        
+        # Continue attack if we have advantage or can harass
+        self.attacking_ = True
+    
+    def opening_supply_count(self) -> int:
+        """Get current supply used in opening phase.
+        
+        Supply = number of units consuming supply (Drones, Overlords, combat units)
+        """
+        from cppsource.Information import InformationManager
+        
+        info = InformationManager.Instance()
+        
+        supply = 0
+        
+        # Each unit type consumes supply
+        supply += info.count_unit("Zerg_Drone") * 1         # 1 supply each
+        supply += info.count_unit("Zerg_Overlord") * 8      # Overlords provide +8 supply
+        supply += info.count_unit("Zerg_Zergling") * 1      # 1 supply each
+        supply += info.count_unit("Zerg_Mutalisk") * 3      # 3 supply each
+        supply += info.count_unit("Zerg_Hydralisk") * 2     # 2 supply each
+        supply += info.count_unit("Zerg_Lurker") * 2        # 2 supply each
+        
+        # Return only supply used (not provided by Overlords)
+        # Rough calculation: total - overlord supply provided
+        overlord_count = info.count_unit("Zerg_Overlord")
+        overlord_supply_provided = overlord_count * 8
+        
+        # Supply used is roughly: drones + combat units
+        supply_used = (info.count_unit("Zerg_Drone") +
+                      info.count_unit("Zerg_Zergling") +
+                      info.count_unit("Zerg_Mutalisk") * 3 +
+                      info.count_unit("Zerg_Hydralisk") * 2 +
+                      info.count_unit("Zerg_Lurker") * 2)
+        
+        return supply_used
     
     def expect_lurkers(self) -> bool:
         """Predict Lurker usage by Zerg opponent."""

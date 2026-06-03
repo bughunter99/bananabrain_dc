@@ -182,6 +182,25 @@ class InformationManager:
         """Check if completed enemy unit type exists."""
         return self.enemy_completed_count_.get(unit_type, 0) > 0
     
+    def count_unit(self, unit_type: str, player: str = "self") -> int:
+        """Count units of specific type for player.
+        
+        Args:
+            unit_type: Type of unit to count (e.g., "Zerg_Drone")
+            player: "self" for own units, "enemy" for enemy units
+        
+        Returns:
+            Count of units of that type
+        """
+        if player == "self":
+            units = self.my_units_
+        elif player == "enemy":
+            units = self.enemy_units_
+        else:
+            return 0
+        
+        return sum(1 for unit in units if unit.type == unit_type)
+    
     def enemy_building_seen(self) -> bool:
         """Check if any enemy building has been seen."""
         return self.enemy_building_seen_
