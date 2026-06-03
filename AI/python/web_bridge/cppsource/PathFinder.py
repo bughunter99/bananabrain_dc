@@ -210,19 +210,135 @@ class PathFinder:
         return self.ramp_high_ground_.get(str(ramp_name))
 
     def execute_path(self, unit: Any, position: Tuple[int, int], command: Any) -> bool:
-        """Execute a path command for a unit.
+        """Execute a path command for a unit with ramp optimization.
+        
+        C++ Logic:
+        - Check if unit is ground-based and in valid area
+        - Get path to destination
+        - For each chokepoint in path:
+          * Check if chokepoint has ramp_high_ground entry
+          * Verify unit is on low ground side
+          * Check visibility conditions
+          * If conditions met, move to ramp and return true
+        - If chokepoint is far away (> 320), move there
+        - Otherwise execute default command
         
         Args:
-            unit: Unit object
-            position: Target position
-            command: Command to execute
+            unit: Unit object with position, isFlying, getDistance methods
+            position: Target position (tile coordinates)
+            command: Default command to execute if path optimization not needed
             
         Returns:
-            True if command executed successfully
+            True if path executed successfully
         """
         try:
+            from cppsource.Information import InformationManager
+            from cppsource.BaseState import BaseState
+            
+            info = InformationManager.Instance()
+            base_state = BaseState.Instance()
+            
+            # Check if unit exists and is not flying
+            if not unit or getattr(unit, 'isFlying', lambda: True)():
+                command()
+                return True
+            
+            # Get unit position
+            unit_pos = getattr(unit, 'getPosition', lambda: position)()
+            if not unit_pos:
+                unit_pos = position
+            
+            # Ensure both positions are tuples
+            if not isinstance(unit_pos, tuple):
+                unit_pos = (int(unit_pos[0] if hasattr(unit_pos, '__getitem__') else unit_pos), 
+                           int(unit_pos[1] if hasattr(unit_pos, '__getitem__') else unit_pos))
+            if not isinstance(position, tuple):
+                position = (int(position[0] if hasattr(position, '__getitem__') else position), 
+                           int(position[1] if hasattr(position, '__getitem__') else position))
+            
+            # Check if both positions are in walkable areas
+            if not base_state.has_area(unit_pos) or not base_state.has_area(position):
+                command()
+                return True
+            
+            # Get path from unit position to target
+            path = self.find_path(unit_pos, position)
+            if not path or len(path) < 2:
+                command()
+                return True
+            
+            # Helper: Check if unit is on low ground side of chokepoint
+            def on_low_ground_side(choke_pos: Tuple[int, int]) -> bool:
+                """Check if unit is on low ground side of chokepoint."""
+                try:
+                    unit_area = base_state.area_at(unit_pos)
+                    if not unit_area:
+                        return False
+                    
+                    # Get height information
+                    unit_height = base_state.get_ground_height(unit_pos)
+                    choke_height = base_state.get_ground_height(choke_pos)
+                    
+                    # Unit is on low ground if its height <= chokepoint height
+                    return unit_height <= choke_height
+                except Exception:
+                    return False
+            
+            # Helper: Check if all surrounding tiles are visible
+            def visible_around_tile(center_pos: Tuple[int, int], radius: int = 1) -> bool:
+                """Check if all tiles around center are visible."""
+                try:
+                    cx, cy = center_pos
+                    for dy in range(-radius, radius + 1):
+                        for dx in range(-radius, radius + 1):
+                            tile_pos = (cx + dx, cy + dy)
+                            if not base_state.is_visible(tile_pos):
+                                return False
+                    return True
+                except Exception:
+                    return False
+            
+            # Helper: Calculate Euclidean distance
+            def distance_to_pos(pos1: Tuple[int, int], pos2: Tuple[int, int]) -> float:
+                """Calculate Euclidean distance between positions."""
+                dx = pos1[0] - pos2[0]
+                dy = pos1[1] - pos2[1]
+                return (dx * dx + dy * dy) ** 0.5
+            
+            # Check each chokepoint in path
+            for choke_pos in path[:-1]:  # Exclude final destination
+                # Look for ramp_high_ground entry for this chokepoint
+                for ramp_id, ramp_pos in self.ramp_high_ground_.items():
+                    if ramp_pos == choke_pos:
+                        # All conditions for ramp climb:
+                        # 1. Unit on low ground side of chokepoint
+                        # 2. Unit far from destination OR destination not visible
+                        # 3. Area around ramp not visible (enemy may have units there)
+                        if (on_low_ground_side(choke_pos) and
+                            (distance_to_pos(unit_pos, position) > 320 or 
+                             not base_state.is_visible(position)) and
+                            not visible_around_tile(ramp_pos)):
+                            
+                            # Move to ramp high ground position
+                            info.unit_move(unit, ramp_pos)
+                            return True
+                
+                # If chokepoint is far away (> 320), move there
+                dist_to_choke = distance_to_pos(unit_pos, choke_pos)
+                if dist_to_choke > 320:
+                    info.unit_move(unit, choke_pos)
+                    return True
+            
+            # Execute default command if no optimization applied
             command()
             return True
+            
         except Exception:
-            return False
+            # Fallback to default command on any error
+            try:
+                command()
+                return True
+            except Exception:
+                return False
+
 
