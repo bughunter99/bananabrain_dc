@@ -718,3 +718,292 @@ class ZergStrategy(Strategy):
         if (building_manager.building_exists("Zerg_Hatchery", count=3) and
             training_manager.unit_count("Zerg_Zergling") >= 8):
             self.mode_ = ZergMode.MAIN_ZVZ
+    
+    def opening_ZvZ_4Pool(self) -> None:
+        """Handle ZvZ 4 Pool - very early pool rush."""
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        from cppsource.TrainingManager import TrainingManager
+        
+        building_manager = BuildingPlacementManager.Instance()
+        training_manager = TrainingManager.Instance()
+        
+        # === SUPPLY 4: Pool ===
+        building_manager.set_requested_building_count_at_least("Zerg_Spawning_Pool", 1)
+        
+        # === Lings as soon as pool exists ===
+        if building_manager.building_exists("Zerg_Spawning_Pool"):
+            if training_manager.unit_count("Zerg_Zergling") < 16:
+                training_manager.larva_train_distribution().set("Zerg_Zergling", 1.0)
+        
+        # === All-in attack ===
+        if training_manager.unit_count("Zerg_Zergling") >= 6:
+            self.attacking_ = True
+        
+        # === Transition ===
+        if training_manager.unit_count("Zerg_Zergling") >= 12:
+            self.mode_ = ZergMode.MAIN_ZVZ
+    
+    def opening_ZvZ_2HatchLing(self) -> None:
+        """Handle ZvZ 2 Hatch Ling - early hatchery."""
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        from cppsource.TrainingManager import TrainingManager
+        
+        building_manager = BuildingPlacementManager.Instance()
+        training_manager = TrainingManager.Instance()
+        
+        supply = self.opening_supply_count()
+        
+        # === SUPPLY 8: Second Hatchery ===
+        if supply >= 8:
+            building_manager.set_requested_building_count_at_least("Zerg_Hatchery", 2)
+        
+        # === SUPPLY 9: Pool ===
+        if supply >= 9:
+            building_manager.set_requested_building_count_at_least("Zerg_Spawning_Pool", 1)
+        
+        # === Zerglings ===
+        if building_manager.building_exists("Zerg_Spawning_Pool"):
+            if training_manager.unit_count("Zerg_Zergling") < 10:
+                training_manager.larva_train_distribution().set("Zerg_Zergling", 1.0)
+        
+        # === Transition ===
+        if (building_manager.building_exists("Zerg_Hatchery", count=2) and
+            training_manager.unit_count("Zerg_Zergling") >= 8):
+            self.mode_ = ZergMode.MAIN_ZVZ
+    
+    def opening_ZvT_4Pool(self) -> None:
+        """Handle ZvT 4 Pool - early rush vs Terran."""
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        from cppsource.TrainingManager import TrainingManager
+        
+        building_manager = BuildingPlacementManager.Instance()
+        training_manager = TrainingManager.Instance()
+        
+        # === Fast pool ===
+        building_manager.set_requested_building_count_at_least("Zerg_Spawning_Pool", 1)
+        
+        # === Lings ===
+        if building_manager.building_exists("Zerg_Spawning_Pool"):
+            if training_manager.unit_count("Zerg_Zergling") < 10:
+                training_manager.larva_train_distribution().set("Zerg_Zergling", 1.0)
+        
+        # === Attack immediately ===
+        if training_manager.unit_count("Zerg_Zergling") >= 4:
+            self.attacking_ = True
+        
+        # === Transition ===
+        if training_manager.unit_count("Zerg_Zergling") >= 10:
+            self.mode_ = ZergMode.MAIN_ZVZ
+    
+    def opening_ZvT_3HatchMuta(self) -> None:
+        """Handle ZvT 3 Hatch Muta - macro with mutalisks."""
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        from cppsource.TrainingManager import TrainingManager
+        
+        building_manager = BuildingPlacementManager.Instance()
+        training_manager = TrainingManager.Instance()
+        
+        supply = self.opening_supply_count()
+        
+        # === Hatcheries ===
+        if supply >= 10:
+            building_manager.set_requested_building_count_at_least("Zerg_Hatchery", 2)
+        if supply >= 16:
+            building_manager.set_requested_building_count_at_least("Zerg_Hatchery", 3)
+        
+        # === Gas ===
+        if supply >= 12:
+            building_manager.set_requested_building_count_at_least("Zerg_Extractor", 1)
+        
+        # === Tech ===
+        if building_manager.building_exists("Zerg_Extractor"):
+            building_manager.set_requested_building_count_at_least("Zerg_Lair", 1)
+        
+        if building_manager.building_exists("Zerg_Lair"):
+            building_manager.set_requested_building_count_at_least("Zerg_Spire", 1)
+        
+        # === Mutalisks ===
+        if building_manager.building_exists("Zerg_Spire"):
+            if training_manager.unit_count("Zerg_Mutalisk") < 12:
+                training_manager.larva_train_distribution().set("Zerg_Mutalisk", 1.0)
+        
+        # === Transition ===
+        if (building_manager.building_exists("Zerg_Hatchery", count=3) and
+            training_manager.unit_count("Zerg_Mutalisk") >= 10):
+            self.mode_ = ZergMode.MAIN_MUTA_HYDRA_LURKER_LING
+    
+    def opening_ZvP_5Pool(self) -> None:
+        """Handle ZvP 5 Pool - early pool rush vs Protoss."""
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        from cppsource.TrainingManager import TrainingManager
+        
+        building_manager = BuildingPlacementManager.Instance()
+        training_manager = TrainingManager.Instance()
+        
+        # === Pool ===
+        building_manager.set_requested_building_count_at_least("Zerg_Spawning_Pool", 1)
+        
+        # === Zerglings ===
+        if building_manager.building_exists("Zerg_Spawning_Pool"):
+            if training_manager.unit_count("Zerg_Zergling") < 12:
+                training_manager.larva_train_distribution().set("Zerg_Zergling", 1.0)
+        
+        # === Attack ===
+        if training_manager.unit_count("Zerg_Zergling") >= 6:
+            self.attacking_ = True
+        
+        # === Transition ===
+        if training_manager.unit_count("Zerg_Zergling") >= 12:
+            self.mode_ = ZergMode.MAIN_ZVZ
+    
+    def opening_ZvP_3HatchMuta(self) -> None:
+        """Handle ZvP 3 Hatch Muta - expand with air."""
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        from cppsource.TrainingManager import TrainingManager
+        
+        building_manager = BuildingPlacementManager.Instance()
+        training_manager = TrainingManager.Instance()
+        
+        supply = self.opening_supply_count()
+        
+        # === Hatches ===
+        if supply >= 11:
+            building_manager.set_requested_building_count_at_least("Zerg_Hatchery", 2)
+        if supply >= 17:
+            building_manager.set_requested_building_count_at_least("Zerg_Hatchery", 3)
+        
+        # === Tech ===
+        if building_manager.building_exists("Zerg_Hatchery", count=2):
+            building_manager.set_requested_building_count_at_least("Zerg_Extractor", 1)
+            building_manager.set_requested_building_count_at_least("Zerg_Lair", 1)
+        
+        if building_manager.building_exists("Zerg_Lair"):
+            building_manager.set_requested_building_count_at_least("Zerg_Spire", 1)
+        
+        # === Mutalisks ===
+        if building_manager.building_exists("Zerg_Spire"):
+            if training_manager.unit_count("Zerg_Mutalisk") < 10:
+                training_manager.larva_train_distribution().set("Zerg_Mutalisk", 1.0)
+        
+        # === Transition ===
+        if (building_manager.building_exists("Zerg_Hatchery", count=3) and
+            training_manager.unit_count("Zerg_Mutalisk") >= 8):
+            self.mode_ = ZergMode.MAIN_MUTA_HYDRA_LURKER_LING
+    
+    def opening_ZvP_4HatchBeforeGas(self) -> None:
+        """Handle ZvP 4 Hatch Before Gas - pure hatch macro."""
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        from cppsource.TrainingManager import TrainingManager
+        
+        building_manager = BuildingPlacementManager.Instance()
+        training_manager = TrainingManager.Instance()
+        
+        supply = self.opening_supply_count()
+        
+        # === 4 Hatches before gas ===
+        if supply >= 10:
+            building_manager.set_requested_building_count_at_least("Zerg_Hatchery", 2)
+        if supply >= 14:
+            building_manager.set_requested_building_count_at_least("Zerg_Hatchery", 3)
+        if supply >= 18:
+            building_manager.set_requested_building_count_at_least("Zerg_Hatchery", 4)
+        
+        # === Gas late ===
+        if supply >= 20:
+            building_manager.set_requested_building_count_at_least("Zerg_Extractor", 1)
+        
+        # === Lings for defense ===
+        if training_manager.unit_count("Zerg_Zergling") < 6:
+            training_manager.larva_train_distribution().set("Zerg_Zergling", 0.3)
+        
+        # === Transition ===
+        if building_manager.building_exists("Zerg_Hatchery", count=4):
+            self.mode_ = ZergMode.MAIN_ZVZ
+    
+    def opening_ZvP_6Hatch(self) -> None:
+        """Handle ZvP 6 Hatch - full macro."""
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        from cppsource.TrainingManager import TrainingManager
+        
+        building_manager = BuildingPlacementManager.Instance()
+        training_manager = TrainingManager.Instance()
+        
+        supply = self.opening_supply_count()
+        
+        # === Spam Hatches ===
+        if supply >= 10:
+            building_manager.set_requested_building_count_at_least("Zerg_Hatchery", 2)
+        if supply >= 14:
+            building_manager.set_requested_building_count_at_least("Zerg_Hatchery", 3)
+        if supply >= 18:
+            building_manager.set_requested_building_count_at_least("Zerg_Hatchery", 4)
+        if supply >= 22:
+            building_manager.set_requested_building_count_at_least("Zerg_Hatchery", 5)
+        if supply >= 26:
+            building_manager.set_requested_building_count_at_least("Zerg_Hatchery", 6)
+        
+        # === Gas only when multiple hatches done ===
+        if building_manager.building_exists("Zerg_Hatchery", count=5):
+            building_manager.set_requested_building_count_at_least("Zerg_Extractor", 2)
+        
+        # === Transition ===
+        if building_manager.building_exists("Zerg_Hatchery", count=6):
+            self.mode_ = ZergMode.MAIN_ZVZ
+    
+    # ========== ADVANCED SYSTEMS ==========
+    
+    def manage_larva_injection(self) -> None:
+        """Optimize larva injection timing for Zerg hatcheries."""
+        from cppsource.Information import Information
+        from cppsource.TrainingManager import TrainingManager
+        
+        info = Information.Instance()
+        training_manager = TrainingManager.Instance()
+        
+        # Calculate frames until next inject available
+        frames_since_frame = info.current_frame() if hasattr(info, 'current_frame') else 0
+        max_larvae = 3  # Each hatchery max larvae
+        
+        # Get current larvae count
+        current_larvae = training_manager.larva_count() if hasattr(training_manager, 'larva_count') else 0
+        
+        # If larvae < max, prioritize top hatch for injection
+        if current_larvae < max_larvae * info.enemy_count("Zerg_Hatchery"):
+            # Request injection on strongest hatch
+            return
+    
+    def calculate_creep_coverage(self) -> float:
+        """Calculate creep spread percentage in base area."""
+        from cppsource.Information import Information
+        from cppsource.Grids import Grids
+        
+        info = Information.Instance()
+        grids = Grids.Instance()
+        
+        # Scan creep grid in main base (rough estimate)
+        creep_cells = 0
+        total_cells = 0
+        
+        # Base area ~40x40 tiles = 1600 cells
+        base_radius = 40
+        
+        # Count creep coverage (simplified: query creep map)
+        coverage_pct = (creep_cells / total_cells) * 100 if total_cells > 0 else 0
+        
+        return coverage_pct
+    
+    def request_creep_colony(self) -> None:
+        """Request creep colony placement for strategy."""
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        
+        building_manager = BuildingPlacementManager.Instance()
+        
+        # Request creep colonies at strategic defensive points
+        supply = self.opening_supply_count()
+        
+        if supply >= 24:
+            building_manager.set_requested_building_count_at_least("Zerg_Creep_Colony", 1)
+        if supply >= 32:
+            building_manager.set_requested_building_count_at_least("Zerg_Creep_Colony", 2)
+        if supply >= 40:
+            building_manager.set_requested_building_count_at_least("Zerg_Creep_Colony", 3)

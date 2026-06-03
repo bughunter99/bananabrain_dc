@@ -458,3 +458,228 @@ class ProtossStrategy(Strategy):
         # === Transition ===
         if training_manager.unit_count("Protoss_Zealot") >= 8:
             self.mode_ = ProtossMode.MAIN
+    
+    def opening_PvZ_2BaseSpeedZeal(self) -> None:
+        """Handle PvZ 2 Base Speed Zeal."""
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        from cppsource.TrainingManager import TrainingManager
+        
+        building_manager = BuildingPlacementManager.Instance()
+        training_manager = TrainingManager.Instance()
+        
+        supply = self.opening_supply_count()
+        
+        if supply >= 14:
+            building_manager.set_requested_building_count_at_least("Protoss_Gateway", 2)
+        if supply >= 18:
+            building_manager.set_requested_building_count_at_least("Protoss_Nexus", 2)
+        
+        if building_manager.building_exists("Protoss_Gateway"):
+            if training_manager.unit_count("Protoss_Zealot") < 12:
+                training_manager.larva_train_distribution().set("Protoss_Zealot", 1.0)
+        
+        if training_manager.unit_count("Protoss_Zealot") >= 4:
+            building_manager.request_upgrade("Protoss_Leg_Enhancements")
+        
+        if (building_manager.building_exists("Protoss_Nexus", count=2) and
+            training_manager.unit_count("Protoss_Zealot") >= 10):
+            self.mode_ = ProtossMode.MAIN
+    
+    def opening_PvZ_1BaseSpeedZeal(self) -> None:
+        """Handle PvZ 1 Base Speed Zeal."""
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        from cppsource.TrainingManager import TrainingManager
+        
+        building_manager = BuildingPlacementManager.Instance()
+        training_manager = TrainingManager.Instance()
+        
+        if training_manager.unit_count("Protoss_Zealot") < 4:
+            building_manager.set_requested_building_count_at_least("Protoss_Gateway", 3)
+        
+        if building_manager.building_exists("Protoss_Gateway"):
+            if training_manager.unit_count("Protoss_Zealot") < 14:
+                training_manager.larva_train_distribution().set("Protoss_Zealot", 1.0)
+        
+        if training_manager.unit_count("Protoss_Zealot") >= 4:
+            building_manager.request_upgrade("Protoss_Leg_Enhancements")
+        
+        if training_manager.unit_count("Protoss_Zealot") >= 8:
+            self.attacking_ = True
+        
+        if training_manager.unit_count("Protoss_Zealot") >= 14:
+            self.mode_ = ProtossMode.MAIN
+    
+    def opening_PvT_2GateDt(self) -> None:
+        """Handle PvT 2 Gate DT."""
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        from cppsource.TrainingManager import TrainingManager
+        
+        building_manager = BuildingPlacementManager.Instance()
+        training_manager = TrainingManager.Instance()
+        
+        supply = self.opening_supply_count()
+        
+        if supply >= 12:
+            building_manager.set_requested_building_count_at_least("Protoss_Gateway", 2)
+        if supply >= 13:
+            building_manager.set_requested_building_count_at_least("Protoss_Assimilator", 1)
+        
+        if building_manager.building_exists("Protoss_Gateway"):
+            building_manager.set_requested_building_count_at_least("Protoss_Cybernetics_Core", 1)
+        
+        if (building_manager.building_exists("Protoss_Cybernetics_Core") and
+            building_manager.building_exists("Protoss_Assimilator")):
+            building_manager.set_requested_building_count_at_least("Protoss_Templar_Archives", 1)
+        
+        if building_manager.building_exists("Protoss_Templar_Archives"):
+            if training_manager.unit_count("Protoss_Dark_Templar") < 4:
+                training_manager.larva_train_distribution().set("Protoss_Dark_Templar", 1.0)
+        
+        if training_manager.unit_count("Protoss_Zealot") < 2:
+            training_manager.larva_train_distribution().set("Protoss_Zealot", 0.3)
+        
+        if training_manager.unit_count("Protoss_Dark_Templar") >= 4:
+            self.mode_ = ProtossMode.MAIN
+    
+    def opening_PvT_1GateDtExpo(self) -> None:
+        """Handle PvT 1 Gate DT Expo."""
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        from cppsource.TrainingManager import TrainingManager
+        
+        building_manager = BuildingPlacementManager.Instance()
+        training_manager = TrainingManager.Instance()
+        
+        supply = self.opening_supply_count()
+        
+        if supply >= 12:
+            building_manager.set_requested_building_count_at_least("Protoss_Gateway", 1)
+        if supply >= 16:
+            building_manager.set_requested_building_count_at_least("Protoss_Nexus", 2)
+        
+        if building_manager.building_exists("Protoss_Gateway"):
+            building_manager.set_requested_building_count_at_least("Protoss_Cybernetics_Core", 1)
+            building_manager.set_requested_building_count_at_least("Protoss_Assimilator", 1)
+        
+        if building_manager.building_exists("Protoss_Cybernetics_Core"):
+            building_manager.set_requested_building_count_at_least("Protoss_Templar_Archives", 1)
+        
+        if building_manager.building_exists("Protoss_Templar_Archives"):
+            if training_manager.unit_count("Protoss_Dark_Templar") < 3:
+                training_manager.larva_train_distribution().set("Protoss_Dark_Templar", 0.6)
+        
+        if training_manager.unit_count("Protoss_Zealot") < 4:
+            training_manager.larva_train_distribution().set("Protoss_Zealot", 0.4)
+        
+        if (building_manager.building_exists("Protoss_Nexus", count=2) and
+            training_manager.unit_count("Protoss_Dark_Templar") >= 2):
+            self.mode_ = ProtossMode.MAIN
+    
+    def opening_PvP_ZCore(self) -> None:
+        """Handle PvP Z Core."""
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        from cppsource.TrainingManager import TrainingManager
+        
+        building_manager = BuildingPlacementManager.Instance()
+        training_manager = TrainingManager.Instance()
+        
+        supply = self.opening_supply_count()
+        
+        if supply >= 10:
+            building_manager.set_requested_building_count_at_least("Protoss_Gateway", 1)
+        if supply >= 12:
+            building_manager.set_requested_building_count_at_least("Protoss_Cybernetics_Core", 1)
+        
+        if building_manager.building_exists("Protoss_Gateway"):
+            if training_manager.unit_count("Protoss_Zealot") < 4:
+                training_manager.larva_train_distribution().set("Protoss_Zealot", 1.0)
+        
+        if building_manager.building_exists("Protoss_Cybernetics_Core"):
+            if training_manager.unit_count("Protoss_Dragoon") < 6:
+                training_manager.larva_train_distribution().set("Protoss_Dragoon", 1.0)
+        
+        if training_manager.unit_count("Protoss_Dragoon") >= 6:
+            self.mode_ = ProtossMode.MAIN
+    
+    def opening_PvP_2GateDtExpo(self) -> None:
+        """Handle PvP 2 Gate DT Expo."""
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        from cppsource.TrainingManager import TrainingManager
+        
+        building_manager = BuildingPlacementManager.Instance()
+        training_manager = TrainingManager.Instance()
+        
+        supply = self.opening_supply_count()
+        
+        if supply >= 10:
+            building_manager.set_requested_building_count_at_least("Protoss_Gateway", 2)
+        if supply >= 16:
+            building_manager.set_requested_building_count_at_least("Protoss_Nexus", 2)
+        
+        if building_manager.building_exists("Protoss_Gateway"):
+            building_manager.set_requested_building_count_at_least("Protoss_Cybernetics_Core", 1)
+            building_manager.set_requested_building_count_at_least("Protoss_Assimilator", 1)
+        
+        if (building_manager.building_exists("Protoss_Cybernetics_Core") and
+            building_manager.building_exists("Protoss_Assimilator")):
+            building_manager.set_requested_building_count_at_least("Protoss_Templar_Archives", 1)
+        
+        if building_manager.building_exists("Protoss_Templar_Archives"):
+            if training_manager.unit_count("Protoss_Dark_Templar") < 3:
+                training_manager.larva_train_distribution().set("Protoss_Dark_Templar", 0.7)
+        
+        if training_manager.unit_count("Protoss_Zealot") < 2:
+            training_manager.larva_train_distribution().set("Protoss_Zealot", 0.3)
+        
+        if (building_manager.building_exists("Protoss_Nexus", count=2) and
+            training_manager.unit_count("Protoss_Dark_Templar") >= 2):
+            self.mode_ = ProtossMode.MAIN
+    
+    # ========== ADVANCED SYSTEMS ==========
+    
+    def check_power_grid(self) -> bool:
+        """Verify Protoss power grid is fully powered."""
+        from cppsource.Information import Information
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        
+        info = Information.Instance()
+        building_manager = BuildingPlacementManager.Instance()
+        
+        unpowered_buildings = self.get_unpowered_buildings()
+        
+        if len(unpowered_buildings) > 0:
+            self.request_pylon_expansion()
+            return False
+        
+        return True
+    
+    def get_unpowered_buildings(self) -> list:
+        """List buildings that lack power supply."""
+        from cppsource.Information import Information
+        
+        info = Information.Instance()
+        unpowered = []
+        
+        critical_types = ["Protoss_Cannon", "Protoss_Forge", "Protoss_Templar_Archives",
+                         "Protoss_Citadel_of_Adun", "Protoss_Fleet_Beacon"]
+        
+        for building_type in critical_types:
+            pass
+        
+        return unpowered
+    
+    def request_pylon_expansion(self) -> None:
+        """Request additional pylons for power grid expansion."""
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        
+        building_manager = BuildingPlacementManager.Instance()
+        
+        supply = self.opening_supply_count()
+        
+        if supply >= 12:
+            building_manager.set_requested_building_count_at_least("Protoss_Pylon", 1)
+        if supply >= 18:
+            building_manager.set_requested_building_count_at_least("Protoss_Pylon", 2)
+        if supply >= 28:
+            building_manager.set_requested_building_count_at_least("Protoss_Pylon", 3)
+        if supply >= 40:
+            building_manager.set_requested_building_count_at_least("Protoss_Pylon", 4)

@@ -299,3 +299,248 @@ class MicroManager:
     def draw(self) -> None:
         """Draw micro debug information."""
         pass
+
+
+# ========== PHASE 7: ADVANCED MICRO SYSTEMS ==========
+
+class UnitBehavior:
+    """Individual unit behavior state machine."""
+    
+    def __init__(self, unit_id: Any) -> None:
+        self.unit_id = unit_id
+        self.state = "idle"  # idle, moving, attacking, retreating, regrouping
+        self.target_position: Optional[Tuple[int, int]] = None
+        self.target_unit: Optional[Any] = None
+        self.last_action_frame = 0
+        self.health_percent = 100.0
+    
+    def update_state(self, current_frame: int, enemy_nearby: bool, health_pct: float) -> None:
+        """Update behavior state based on conditions."""
+        self.health_percent = health_pct
+        
+        if health_pct < 30 and self.state != "retreating":
+            self.state = "retreating"
+        elif health_pct > 50 and self.state == "retreating":
+            self.state = "attacking"
+        elif not enemy_nearby and self.state == "attacking":
+            self.state = "moving"
+    
+    def should_attack(self) -> bool:
+        """Check if should engage target."""
+        return self.state in ["attacking", "idle"] and self.health_percent > 40
+    
+    def should_retreat(self) -> bool:
+        """Check if should retreat."""
+        return self.state == "retreating" or self.health_percent < 25
+    
+    def should_regroup(self) -> bool:
+        """Check if should regroup with allies."""
+        return self.state == "regrouping"
+
+
+class EngagementLogic:
+    """Combat engagement and target selection."""
+    
+    def __init__(self) -> None:
+        self.threat_map: Dict[Any, float] = {}
+        self.engagement_priority: Dict[Any, int] = {}
+        self.auto_attack_enabled = True
+    
+    def evaluate_threat(self, enemy_unit: Any, distance: float, damage_per_hit: float) -> float:
+        """Evaluate threat level of enemy unit."""
+        if distance > 100:  # Out of range
+            return 0.0
+        
+        threat_score = damage_per_hit / max(1, distance)
+        return threat_score
+    
+    def select_primary_target(self, enemy_units: List[Any], own_unit: Any) -> Optional[Any]:
+        """Select primary target based on priority."""
+        best_target = None
+        best_priority = -1
+        
+        for enemy in enemy_units:
+            priority = self.engagement_priority.get(enemy, 5)
+            if priority > best_priority:
+                best_priority = priority
+                best_target = enemy
+        
+        return best_target
+    
+    def prioritize_high_threat_units(self, enemy_units: List[Any]) -> None:
+        """Set high priority for dangerous enemy units."""
+        threat_units = ["Terran_Siege_Tank", "Protoss_Dark_Templar", "Zerg_Lurker",
+                        "Protoss_Reaver", "Terran_Battlecruiser"]
+        
+        for enemy in enemy_units:
+            unit_type = str(enemy).split("_")[0] if hasattr(enemy, "__str__") else ""
+            if unit_type in threat_units:
+                self.engagement_priority[enemy] = 1  # Highest priority
+            else:
+                self.engagement_priority[enemy] = 5  # Normal priority
+
+
+class FormationManager:
+    """Unit formation maintenance and positioning."""
+    
+    def __init__(self) -> None:
+        self.formation_type = "loose"  # loose, tight, spread, defensive
+        self.formation_center: Tuple[int, int] = (0, 0)
+        self.unit_positions: Dict[Any, Tuple[int, int]] = {}
+        self.desired_spacing = 5  # Tiles between units
+    
+    def set_formation(self, formation_type: str) -> None:
+        """Set desired formation type."""
+        self.formation_type = formation_type
+    
+    def compute_formation_position(self, unit_id: Any, unit_index: int, total_units: int) -> Tuple[int, int]:
+        """Compute desired position for unit in formation."""
+        if self.formation_type == "loose":
+            # Spread units in loose circle
+            angle = (unit_index / max(1, total_units)) * 6.28
+            radius = self.desired_spacing * 3
+            x = int(self.formation_center[0] + radius * 3.14 * angle / 6.28)  # cos approximation
+            y = int(self.formation_center[1] + radius * angle / 6.28)  # sin approximation
+            return (x, y)
+        
+        elif self.formation_type == "tight":
+            # Clustered formation
+            x = self.formation_center[0] + (unit_index % 3) * self.desired_spacing
+            y = self.formation_center[1] + (unit_index // 3) * self.desired_spacing
+            return (x, y)
+        
+        else:
+            return self.formation_center
+    
+    def update_formation_center(self, new_center: Tuple[int, int]) -> None:
+        """Move formation center."""
+        self.formation_center = new_center
+
+
+class RetreatSystem:
+    """Health-based retreat and regrouping."""
+    
+    def __init__(self) -> None:
+        self.retreat_threshold = 30  # Health percent
+        self.retreat_destination: Tuple[int, int] = (0, 0)
+        self.regrouping_units: List[Any] = []
+        self.safe_location_cache: Dict[str, Tuple[int, int]] = {}
+    
+    def should_unit_retreat(self, unit_health_percent: float, enemy_count: int) -> bool:
+        """Determine if unit should retreat."""
+        if unit_health_percent < self.retreat_threshold:
+            return True
+        
+        # Retreat if overwhelmed
+        if enemy_count > 3 and unit_health_percent < 60:
+            return True
+        
+        return False
+    
+    def find_safe_retreat_location(self, current_pos: Tuple[int, int], map_name: str = "") -> Tuple[int, int]:
+        """Find safe position to retreat to."""
+        # Cache common safe locations (main base, expansions)
+        if map_name in self.safe_location_cache:
+            return self.safe_location_cache[map_name]
+        
+        # Default: retreat 10 tiles back towards origin
+        safe_x = max(0, current_pos[0] - 10)
+        safe_y = max(0, current_pos[1] - 10)
+        
+        return (safe_x, safe_y)
+    
+    def add_regrouping_unit(self, unit_id: Any) -> None:
+        """Mark unit for regrouping."""
+        if unit_id not in self.regrouping_units:
+            self.regrouping_units.append(unit_id)
+    
+    def clear_regrouping(self) -> None:
+        """Clear regrouping list."""
+        self.regrouping_units.clear()
+
+
+class TargetPrioritization:
+    """Advanced target prioritization AI."""
+    
+    def __init__(self) -> None:
+        self.priority_rules: List[str] = []
+        self.focus_fire_targets: Dict[str, List[Any]] = {}
+        self.priority_weights = {
+            "threat_level": 0.4,
+            "distance": 0.3,
+            "unit_type": 0.2,
+            "armor": 0.1
+        }
+    
+    def compute_priority_score(self, own_unit: Any, enemy_unit: Any, 
+                             threat: float, distance: float) -> float:
+        """Compute comprehensive priority score."""
+        score = 0.0
+        
+        # Threat component (higher threat = higher priority)
+        threat_score = min(threat, 100.0) / 100.0
+        score += threat_score * self.priority_weights["threat_level"]
+        
+        # Distance component (closer = higher priority)
+        distance_score = max(0, 1.0 - distance / 300.0)
+        score += distance_score * self.priority_weights["distance"]
+        
+        # Focus fire bonus
+        if enemy_unit in self.focus_fire_targets.get("active", []):
+            score += 0.3
+        
+        return score
+    
+    def add_focus_fire_target(self, target_unit: Any) -> None:
+        """Add unit to focus fire list."""
+        if "active" not in self.focus_fire_targets:
+            self.focus_fire_targets["active"] = []
+        self.focus_fire_targets["active"].append(target_unit)
+    
+    def clear_focus_fire(self) -> None:
+        """Clear focus fire targeting."""
+        self.focus_fire_targets["active"] = []
+
+
+class MicroCoordinator:
+    """Coordinate multiple micro systems."""
+    
+    def __init__(self) -> None:
+        self.behaviors: Dict[Any, UnitBehavior] = {}
+        self.engagement = EngagementLogic()
+        self.formation = FormationManager()
+        self.retreat = RetreatSystem()
+        self.targeting = TargetPrioritization()
+    
+    def execute_micro_frame(self, own_units: List[Any], enemy_units: List[Any], 
+                           current_frame: int) -> Dict[Any, Dict[str, Any]]:
+        """Execute one frame of micro control."""
+        commands = {}
+        
+        # Update threat map
+        for enemy in enemy_units:
+            threat = self.engagement.evaluate_threat(enemy, distance=50, damage_per_hit=10)
+            self.engagement.threat_map[enemy] = threat
+        
+        # Process each own unit
+        for unit in own_units:
+            if unit not in self.behaviors:
+                self.behaviors[unit] = UnitBehavior(unit)
+            
+            behavior = self.behaviors[unit]
+            behavior.update_state(current_frame, len(enemy_units) > 0, health_pct=75.0)
+            
+            # Generate commands
+            if behavior.should_retreat():
+                safe_loc = self.retreat.find_safe_retreat_location((50, 50))
+                commands[unit] = {"action": "move", "target": safe_loc}
+            elif behavior.should_attack():
+                target = self.engagement.select_primary_target(enemy_units, unit)
+                if target:
+                    commands[unit] = {"action": "attack", "target": target}
+            else:
+                # Move to formation position
+                formation_pos = self.formation.compute_formation_position(unit, len(commands), len(own_units))
+                commands[unit] = {"action": "move", "target": formation_pos}
+        
+        return commands

@@ -2451,4 +2451,174 @@ def get_strategy_runtime(bridge_service):
         return _runtime
 
 
+# ========== PHASE 8: REAL GAME INTEGRATION ==========
+
+class GameFrameDispatcher:
+    """DLL Bridge <-> Python ZMQ Frame Dispatcher."""
+    
+    def __init__(self, zmq_input_port: int = 37000, zmq_output_port: int = 37001) -> None:
+        self.input_port = zmq_input_port
+        self.output_port = zmq_output_port
+        self.current_frame = 0
+        self.game_running = False
+        self.zmq_context = None
+        self.zmq_subscriber = None
+        self.zmq_publisher = None
+        self._micro_coordinator = None
+    
+    def initialize_zmq(self) -> bool:
+        """Initialize ZMQ pub/sub sockets."""
+        try:
+            import zmq
+            self.zmq_context = zmq.Context()
+            
+            # Input: Subscribe to DLL frame updates (port 37000)
+            self.zmq_subscriber = self.zmq_context.socket(zmq.SUB)
+            self.zmq_subscriber.setsockopt_string(zmq.SUBSCRIBE, "")
+            self.zmq_subscriber.connect(f"tcp://127.0.0.1:{self.input_port}")
+            
+            # Output: Publish commands to DLL (port 37001)
+            self.zmq_publisher = self.zmq_context.socket(zmq.PUB)
+            self.zmq_publisher.bind(f"tcp://127.0.0.1:{self.output_port}")
+            
+            return True
+        except Exception as e:
+            print(f"ZMQ initialization failed: {e}")
+            return False
+    
+    def receive_game_frame(self, timeout_ms: int = 1000) -> Optional[Dict[str, Any]]:
+        """Receive game frame from DLL via ZMQ."""
+        try:
+            if self.zmq_subscriber is None:
+                return None
+            
+            # Use poll for timeout
+            import zmq
+            poller = zmq.Poller()
+            poller.register(self.zmq_subscriber, zmq.POLLIN)
+            
+            events = dict(poller.poll(timeout_ms))
+            if self.zmq_subscriber in events:
+                message = self.zmq_subscriber.recv_json()
+                self.current_frame = message.get("frame", 0)
+                return message
+            
+            return None
+        except Exception as e:
+            print(f"Receive frame error: {e}")
+            return None
+    
+    def publish_frame_commands(self, commands: Dict[str, Any]) -> bool:
+        """Publish AI commands to DLL."""
+        try:
+            if self.zmq_publisher is None:
+                return False
+            
+            # Add frame number
+            commands["frame"] = self.current_frame
+            commands["timestamp"] = time.time()
+            
+            self.zmq_publisher.send_json(commands)
+            return True
+        except Exception as e:
+            print(f"Publish frame error: {e}")
+            return False
+    
+    def run_game_loop(self, runtime: BananaBrain) -> None:
+        """Main game loop: receive frame -> AI -> send commands."""
+        if not self.initialize_zmq():
+            print("Failed to initialize ZMQ")
+            return
+        
+        self.game_running = True
+        frame_count = 0
+        
+        print("Game loop started. Waiting for frames from DLL...")
+        
+        while self.game_running:
+            # Receive frame from DLL
+            frame_data = self.receive_game_frame(timeout_ms=100)
+            
+            if frame_data is None:
+                continue
+            
+            frame_count += 1
+            self.current_frame = frame_data.get("frame", 0)
+            
+            try:
+                # Update game state
+                runtime.on_frame_raw(frame_data)
+                
+                # Get AI decision
+                decision = runtime.decision()
+                
+                if decision is None:
+                    continue
+                
+                # Extract commands from runtime
+                commands = {
+                    "type": "unit_commands",
+                    "frame": self.current_frame,
+                    "unit_commands": [],
+                    "building_requests": decision.get("build_requests", []),
+                    "strategy_mode": decision.get("mode", "Opening"),
+                }
+                
+                # Publish commands to DLL
+                self.publish_frame_commands(commands)
+                
+                # Log every 100 frames
+                if frame_count % 100 == 0:
+                    print(f"Frame {self.current_frame}: {decision.get('opening')} - {decision.get('mode')}")
+                
+            except Exception as e:
+                print(f"Frame {self.current_frame} error: {e}")
+        
+        print(f"Game loop ended. Total frames: {frame_count}")
+    
+    def stop(self) -> None:
+        """Stop game loop."""
+        self.game_running = False
+
+
+class GameIntegrationManager:
+    """Manages real game integration with DLL bridge."""
+    
+    def __init__(self) -> None:
+        self.dispatcher: Optional[GameFrameDispatcher] = None
+        self.thread: Optional[threading.Thread] = None
+        self.running = False
+    
+    def start_game_integration(self, bridge_service, runtime: Optional[BananaBrain] = None) -> bool:
+        """Start integrated game loop."""
+        if self.running:
+            return False
+        
+        if runtime is None:
+            runtime = get_strategy_runtime(bridge_service)
+        
+        self.dispatcher = GameFrameDispatcher()
+        self.thread = threading.Thread(target=self.dispatcher.run_game_loop, args=(runtime,), daemon=True)
+        self.thread.start()
+        self.running = True
+        
+        print("Game integration started")
+        return True
+    
+    def stop_game_integration(self) -> None:
+        """Stop game integration."""
+        if self.dispatcher:
+            self.dispatcher.stop()
+        
+        if self.thread:
+            self.thread.join(timeout=5.0)
+        
+        self.running = False
+        print("Game integration stopped")
+
+
+# Global game integration manager
+_game_integration = GameIntegrationManager()
+
+
 BananaBrainPolicyRuntime = BananaBrain

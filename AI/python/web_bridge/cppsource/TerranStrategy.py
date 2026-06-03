@@ -529,3 +529,212 @@ class TerranStrategy(Strategy):
         if (building_manager.building_exists("Terran_Command_Center", count=2) and
             training_manager.unit_count("Terran_Vulture") >= 4):
             self.mode_ = TerranMode.MAIN_MECH
+    
+    def opening_TvZ_2Rax(self) -> None:
+        """Handle TvZ 2 Rax."""
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        from cppsource.TrainingManager import TrainingManager
+        
+        building_manager = BuildingPlacementManager.Instance()
+        training_manager = TrainingManager.Instance()
+        
+        supply = self.opening_supply_count()
+        
+        if supply >= 12:
+            building_manager.set_requested_building_count_at_least("Terran_Barracks", 1)
+        if supply >= 15:
+            building_manager.set_requested_building_count_at_least("Terran_Barracks", 2)
+        
+        if building_manager.building_exists("Terran_Barracks"):
+            if training_manager.unit_count("Terran_Marine") < 12:
+                training_manager.larva_train_distribution().set("Terran_Marine", 1.0)
+        
+        if training_manager.unit_count("Terran_Marine") >= 6:
+            self.attacking_ = True
+        
+        if (building_manager.building_exists("Terran_Barracks", count=2) and
+            training_manager.unit_count("Terran_Marine") >= 10):
+            self.mode_ = TerranMode.MAIN_BIO
+    
+    def opening_TvZ_3Rax(self) -> None:
+        """Handle TvZ 3 Rax."""
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        from cppsource.TrainingManager import TrainingManager
+        
+        building_manager = BuildingPlacementManager.Instance()
+        training_manager = TrainingManager.Instance()
+        
+        supply = self.opening_supply_count()
+        
+        if supply >= 12:
+            building_manager.set_requested_building_count_at_least("Terran_Barracks", 1)
+        if supply >= 15:
+            building_manager.set_requested_building_count_at_least("Terran_Barracks", 2)
+        if supply >= 18:
+            building_manager.set_requested_building_count_at_least("Terran_Barracks", 3)
+        
+        if building_manager.building_exists("Terran_Barracks"):
+            if training_manager.unit_count("Terran_Marine") < 16:
+                training_manager.larva_train_distribution().set("Terran_Marine", 1.0)
+        
+        if training_manager.unit_count("Terran_Marine") >= 8:
+            self.attacking_ = True
+        
+        if (building_manager.building_exists("Terran_Barracks", count=3) and
+            training_manager.unit_count("Terran_Marine") >= 14):
+            self.mode_ = TerranMode.MAIN_BIO
+    
+    def opening_TvZ_MutaHydra(self) -> None:
+        """Handle TvZ Muta + Hydra (unexpected Zerg mix)."""
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        from cppsource.TrainingManager import TrainingManager
+        
+        building_manager = BuildingPlacementManager.Instance()
+        training_manager = TrainingManager.Instance()
+        
+        supply = self.opening_supply_count()
+        
+        if supply >= 12:
+            building_manager.set_requested_building_count_at_least("Terran_Barracks", 1)
+        
+        if building_manager.building_exists("Terran_Barracks"):
+            if training_manager.unit_count("Terran_Marine") < 6:
+                training_manager.larva_train_distribution().set("Terran_Marine", 1.0)
+        
+        if supply >= 18:
+            building_manager.set_requested_building_count_at_least("Terran_Starport", 1)
+        
+        if building_manager.building_exists("Terran_Starport"):
+            if training_manager.unit_count("Terran_Goliath") < 6:
+                training_manager.larva_train_distribution().set("Terran_Goliath", 1.0)
+        
+        if (training_manager.unit_count("Terran_Marine") >= 6 and
+            training_manager.unit_count("Terran_Goliath") >= 4):
+            self.mode_ = TerranMode.MAIN_BIO
+    
+    def opening_TvT_1FactFE(self) -> None:
+        """Handle TvT 1 Fact FE."""
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        from cppsource.TrainingManager import TrainingManager
+        
+        building_manager = BuildingPlacementManager.Instance()
+        training_manager = TrainingManager.Instance()
+        
+        supply = self.opening_supply_count()
+        
+        if supply >= 12:
+            building_manager.set_requested_building_count_at_least("Terran_Factory", 1)
+        if supply >= 14:
+            building_manager.set_requested_building_count_at_least("Terran_Barracks", 1)
+        if (building_manager.building_exists("Terran_Factory") and
+            training_manager.unit_count("Terran_Marine") >= 2):
+            building_manager.set_requested_building_count_at_least("Terran_Command_Center", 2)
+        
+        if building_manager.building_exists("Terran_Barracks"):
+            if training_manager.unit_count("Terran_Marine") < 4:
+                training_manager.larva_train_distribution().set("Terran_Marine", 0.5)
+        
+        if building_manager.building_exists("Terran_Factory"):
+            if training_manager.unit_count("Terran_Vulture") < 4:
+                training_manager.larva_train_distribution().set("Terran_Vulture", 0.5)
+        
+        if (building_manager.building_exists("Terran_Command_Center", count=2) and
+            training_manager.unit_count("Terran_Vulture") >= 4):
+            self.mode_ = TerranMode.MAIN_MECH
+    
+    def opening_TvP_2Rax(self) -> None:
+        """Handle TvP 2 Rax."""
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        from cppsource.TrainingManager import TrainingManager
+        
+        building_manager = BuildingPlacementManager.Instance()
+        training_manager = TrainingManager.Instance()
+        
+        supply = self.opening_supply_count()
+        
+        if supply >= 12:
+            building_manager.set_requested_building_count_at_least("Terran_Barracks", 1)
+        if supply >= 16:
+            building_manager.set_requested_building_count_at_least("Terran_Barracks", 2)
+        
+        if building_manager.building_exists("Terran_Barracks"):
+            if training_manager.unit_count("Terran_Marine") < 10:
+                training_manager.larva_train_distribution().set("Terran_Marine", 1.0)
+        
+        if training_manager.unit_count("Terran_Marine") >= 6:
+            self.attacking_ = True
+        
+        if (building_manager.building_exists("Terran_Barracks", count=2) and
+            training_manager.unit_count("Terran_Marine") >= 10):
+            self.mode_ = TerranMode.MAIN_BIO
+    
+    def opening_TvT_2FactVultures(self) -> None:
+        """Handle TvT 2 Fact Vultures."""
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        from cppsource.TrainingManager import TrainingManager
+        
+        building_manager = BuildingPlacementManager.Instance()
+        training_manager = TrainingManager.Instance()
+        
+        supply = self.opening_supply_count()
+        
+        if supply >= 14:
+            building_manager.set_requested_building_count_at_least("Terran_Factory", 2)
+        
+        if building_manager.building_exists("Terran_Factory"):
+            if training_manager.unit_count("Terran_Vulture") < 12:
+                training_manager.larva_train_distribution().set("Terran_Vulture", 1.0)
+        
+        if training_manager.unit_count("Terran_Vulture") >= 6:
+            self.attacking_ = True
+        
+        if training_manager.unit_count("Terran_Vulture") >= 12:
+            self.mode_ = TerranMode.MAIN_MECH
+    
+    # ========== ADVANCED SYSTEMS ==========
+    
+    def optimize_building_sequence(self) -> None:
+        """Optimize Terran building construction sequence."""
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        from cppsource.TrainingManager import TrainingManager
+        
+        building_manager = BuildingPlacementManager.Instance()
+        training_manager = TrainingManager.Instance()
+        
+        supply = self.opening_supply_count()
+        
+        # Bio sequence: Barracks -> Supply Depot -> Engineering Bay
+        if supply >= 12:
+            building_manager.set_requested_building_count_at_least("Terran_Barracks", 1)
+        
+        if building_manager.building_exists("Terran_Barracks"):
+            if supply >= 16:
+                building_manager.set_requested_building_count_at_least("Terran_Engineering_Bay", 1)
+        
+        # Mech sequence: Factory -> Armory
+        if supply >= 18:
+            building_manager.set_requested_building_count_at_least("Terran_Factory", 1)
+        
+        if building_manager.building_exists("Terran_Factory"):
+            if supply >= 22:
+                building_manager.set_requested_building_count_at_least("Terran_Armory", 1)
+    
+    def manage_addon_placements(self) -> None:
+        """Optimize addon placements for production."""
+        from cppsource.BuildingPlacement import BuildingPlacementManager
+        
+        building_manager = BuildingPlacementManager.Instance()
+        
+        # Add-ons: Reactor (build faster), Tech Lab (better units)
+        barrack_count = 2
+        
+        # First 2 barracks: 1 reactor + 1 tech lab
+        if barrack_count >= 1:
+            building_manager.set_requested_building_count_at_least("Terran_Reactor", 1)
+        if barrack_count >= 2:
+            building_manager.set_requested_building_count_at_least("Terran_Tech_Lab", 1)
+        
+        # Factories: Tech labs for better units
+        factory_count = 2
+        if factory_count >= 1:
+            building_manager.set_requested_building_count_at_least("Terran_Tech_Lab", 2)
