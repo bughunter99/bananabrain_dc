@@ -625,3 +625,26 @@ onStart 만 겨우 구현된 상태야.
 이거외에 없는 함수들도 많은데 확인해줘. 무슨무슨 함수가 없는지.
 
 
+이 폴더내 프로그램 소스를 보고 뭐하는 프로그램인지 파악해줘.
+D:\data3\bwapid_ai_dc\Source\BananaBrain.cpp에 보면 strategy_ 변수가 있는데,
+이걸 지금은 자동으로 선택하고 있거든.
+이걸 django에서 선택해서 반영하게하고 싶어.
+
+
+D:\data3\bwapid_ai_dc\Source\BananaBrain.cpp에 보면 strategy_ 변수가 있는데,
+이걸 지금은 자동으로 선택하고 있거든.
+이걸 django에서 선택해서 반영하게하고 싶어.
+msgbusbridge.*를 사용해서 외부에서 조회하고 선택해서 반영하게 해줘.
+
+
+
+del /q /f "D:\util\StarCraft\bwapi-data\AI\*"
+copy "D:\data3\bwapid_ai_dc\Debug\ai_dc2d.dll" "D:\util\StarCraft\bwapi-data\AI\"
+copy "D:\data3\bwapid_ai_dc\Release\ai_dc2.dll" "D:\util\StarCraft\bwapi-data\AI\"
+
+
+Django 웹서버를 만들어서 게임 상황과 strategy를 선택할 수 있게 해줘.
+MsgBusBridge 를 통해 msg를 주고 받아야 해.
+
+
+종족을 zerg로 선택했는데, 선택할 수 있는 전략이 안나오고 그냥 auto로만 있어.

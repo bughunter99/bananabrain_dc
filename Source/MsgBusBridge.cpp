@@ -493,6 +493,12 @@ void MsgBusBridge::apply_action_object(const std::string& type,
         auto si = sf.find("strategy_unit");
         if (si != sf.end()) strategy_unit = si->second;
 
+        // Store strategy command for BananaBrain to pick up
+        if (!strategy_unit.empty() && strategy_unit != "auto") {
+            std::lock_guard<std::mutex> lock(queue_mutex_);
+            pending_strategy_ = strategy_unit;
+            Broodwar->sendTextEx(true, "Strategy set to: %s", strategy_unit.c_str());
+        }
         return;
     }
 
@@ -777,4 +783,14 @@ void MsgBusBridge::apply_action_object(const std::string& type,
         unit->build(building_type, build_pos);
         return;
     }
+}
+
+std::string MsgBusBridge::get_pending_strategy() const {
+    std::lock_guard<std::mutex> lock(queue_mutex_);
+    return pending_strategy_;
+}
+
+void MsgBusBridge::clear_pending_strategy() {
+    std::lock_guard<std::mutex> lock(queue_mutex_);
+    pending_strategy_.clear();
 }

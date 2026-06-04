@@ -1,0 +1,471 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BananaBrain Dashboard</title>
+  <style>
+    :root {
+      --bg: #0f0f1a;
+      --panel: #1a1a2e;
+      --border: #2a2a4a;
+      --accent: #f0c040;
+      --green: #40c070;
+      --red: #e05050;
+      --text: #d0d0e8;
+      --muted: #7070a0;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Consolas', 'Courier New', monospace;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 16px;
+    }
+    h1 {
+      color: var(--accent);
+      font-size: 1.4rem;
+      letter-spacing: 2px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 10px;
+      margin-bottom: 16px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 16px;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 16px;
+    }
+    .panel h2 {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+    /* ── 상태 표시 ── */
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: bold;
+    }
+    .badge.online  { background: #1a4a2a; color: var(--green); border: 1px solid var(--green); }
+    .badge.offline { background: #4a1a1a; color: var(--red);   border: 1px solid var(--red); }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 5px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.85rem;
+    }
+    .stat-row:last-child { border-bottom: none; }
+    .stat-row .label { color: var(--muted); }
+    .stat-row .value { color: var(--accent); font-weight: bold; }
+
+    /* ── 전략 선택 ── */
+    .strategy-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .strat-btn {
+      background: #1e1e38;
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 4px;
+      padding: 4px 10px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+      font-family: inherit;
+    }
+    .strat-btn:hover   { background: #2a2a50; border-color: var(--accent); }
+    .strat-btn.active  { background: #3a2800; border-color: var(--accent); color: var(--accent); }
+    .strat-btn.auto-btn { border-color: var(--green); color: var(--green); }
+    .strat-btn.auto-btn:hover { background: #1a3a20; }
+
+    /* ── 채팅 전송 ── */
+    .input-row {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .input-row input {
+      flex: 1;
+      background: #0f0f1a;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 0.85rem;
+    }
+    .input-row input:focus { outline: none; border-color: var(--accent); }
+    .btn {
+      background: #1e1e38;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 14px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.85rem;
+      transition: background 0.15s;
+    }
+    .btn:hover  { background: #2a2a50; }
+    .btn.danger { border-color: var(--red); color: var(--red); }
+    .btn.danger:hover { background: #3a1010; }
+
+    /* ── 탭 ── */
+    .tab-bar {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 10px;
+    }
+    .tab-btn {
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--muted);
+      padding: 6px 16px;
+      font-family: inherit;
+      font-size: 0.8rem;
+      cursor: pointer;
+      letter-spacing: 0.5px;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+
+    /* ── 로그 공통 ── */
+    .log-container {
+      height: 360px;
+      overflow-y: auto;
+      font-size: 0.78rem;
+      line-height: 1.6;
+    }
+    .log-entry {
+      padding: 2px 0;
+      border-bottom: 1px solid #1a1a2e;
+      display: flex;
+      gap: 8px;
+      align-items: baseline;
+    }
+    .log-ts    { color: var(--muted); min-width: 58px; font-size: 0.72rem; }
+    .log-frame { color: var(--muted); min-width: 54px; text-align: right; font-size: 0.72rem; }
+    .log-event { color: var(--accent); min-width: 100px; }
+    .log-type  { color: #80c0ff;       min-width: 120px; }
+    .log-detail { color: var(--text); word-break: break-all; flex: 1; }
+
+    .toast {
+      position: fixed;
+      bottom: 20px; right: 20px;
+      background: #1a3a20;
+      border: 1px solid var(--green);
+      color: var(--green);
+      padding: 8px 16px;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      display: none;
+      z-index: 999;
+    }
+    @media (max-width: 700px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <h1>&#x1F34C; BananaBrain Dashboard</h1>
+
+  <div class="grid">
+    <!-- 왼쪽 패널 -->
+    <div>
+      <!-- 상태 패널 -->
+      <div class="panel" style="margin-bottom:16px">
+        <h2>게임 상태</h2>
+        <div class="stat-row">
+          <span class="label">연결</span>
+          <span id="badge-connected" class="badge offline">오프라인</span>
+        </div>
+        <div class="stat-row">
+          <span class="label">프레임</span>
+          <span id="val-frame" class="value">-</span>
+        </div>
+        <div class="stat-row">
+          <span class="label">종족</span>
+          <span id="val-race" class="value">-</span>
+        </div>
+        <div class="stat-row">
+          <span class="label">적 종족</span>
+          <span id="val-enemy-race" class="value">-</span>
+        </div>
+        <div class="stat-row">
+          <span class="label">오프닝</span>
+          <span id="val-opening" class="value">-</span>
+        </div>
+        <div class="stat-row">
+          <span class="label">모드</span>
+          <span id="val-mode" class="value">-</span>
+        </div>
+        <div class="stat-row">
+          <span class="label">후반 전략</span>
+          <span id="val-late" class="value">-</span>
+        </div>
+      </div>
+
+      <!-- 전략 선택 패널 -->
+      <div class="panel" style="margin-bottom:16px">
+        <h2>전략 선택</h2>
+        <div class="strategy-grid" id="strategy-grid">
+          <span style="color:var(--muted);font-size:0.8rem">게임 시작 후 전략 목록이 표시됩니다.</span>
+        </div>
+        <div style="margin-top:10px">
+          <button class="btn strat-btn auto-btn" onclick="setStrategy('auto')">&#x21BA; 자동 전략</button>
+        </div>
+      </div>
+
+      <!-- 채팅 전송 패널 -->
+      <div class="panel" style="margin-bottom:16px">
+        <h2>채팅 전송</h2>
+        <div class="input-row">
+          <input type="text" id="chat-input" placeholder="게임 채팅에 전송할 메시지" onkeydown="if(event.key==='Enter') sendChat()">
+          <button class="btn" onclick="sendChat()">전송</button>
+        </div>
+      </div>
+
+      <!-- 게임 나가기 -->
+      <div class="panel">
+        <h2>게임 제어</h2>
+        <button class="btn danger" onclick="leaveGame()">게임 나가기 (gg)</button>
+      </div>
+    </div>
+
+    <!-- 오른쪽: 메시지 탭 -->
+    <div class="panel">
+      <h2>메시지 로그</h2>
+
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchTab('rx')">
+          &#x2193; DLL → Django &nbsp;<span id="rx-count" style="font-size:0.7rem;color:var(--green)"></span>
+        </button>
+        <button class="tab-btn" onclick="switchTab('tx')">
+          &#x2191; Django → DLL &nbsp;<span id="tx-count" style="font-size:0.7rem;color:#80c0ff"></span>
+        </button>
+      </div>
+
+      <!-- DLL → Django 수신 로그 -->
+      <div id="pane-rx" class="tab-pane active">
+        <div class="log-container" id="log-rx"></div>
+      </div>
+
+      <!-- Django → DLL 송신 로그 -->
+      <div id="pane-tx" class="tab-pane">
+        <div class="log-container" id="log-tx"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    let currentOpening = '';
+    let knownStrategies = [];
+    let activeTab = 'rx';
+    // 로그 변경 감지용 시그니처 (최신 항목 기준)
+    let lastRxSig = '';
+    let lastTxSig = '';
+
+    function logSig(entries) {
+      if (!entries || entries.length === 0) return '__empty__';
+      const e = entries[0];
+      return `${entries.length}|${e.ts || ''}|${e.event || e.type || ''}`;
+    }
+
+    function showToast(msg, isError) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.style.background = isError ? '#3a1010' : '#1a3a20';
+      t.style.borderColor = isError ? '#e05050' : '#40c070';
+      t.style.color       = isError ? '#e05050' : '#40c070';
+      t.style.display = 'block';
+      clearTimeout(t._timer);
+      t._timer = setTimeout(() => t.style.display = 'none', 2500);
+    }
+
+    function switchTab(name) {
+      activeTab = name;
+      document.querySelectorAll('.tab-btn').forEach((b, i) => {
+        b.classList.toggle('active', ['rx','tx'][i] === name);
+      });
+      document.getElementById('pane-rx').classList.toggle('active', name === 'rx');
+      document.getElementById('pane-tx').classList.toggle('active', name === 'tx');
+    }
+
+    function renderStrategies(strategies, activeOpening) {
+      const grid = document.getElementById('strategy-grid');
+      if (!strategies || strategies.length === 0) return;
+      if (JSON.stringify(strategies) === JSON.stringify(knownStrategies) &&
+          activeOpening === currentOpening) return;
+
+      knownStrategies = strategies;
+      currentOpening  = activeOpening;
+      grid.innerHTML = '';
+      strategies.forEach(s => {
+        const btn = document.createElement('button');
+        btn.className = 'strat-btn' + (s === activeOpening ? ' active' : '');
+        btn.textContent = s;
+        btn.title = s;
+        btn.onclick = () => setStrategy(s);
+        grid.appendChild(btn);
+      });
+    }
+
+    function updateUI(data) {
+      const badge = document.getElementById('badge-connected');
+      if (data.connected) {
+        badge.textContent = '온라인';
+        badge.className = 'badge online';
+      } else {
+        badge.textContent = '오프라인';
+        badge.className = 'badge offline';
+      }
+      document.getElementById('val-frame').textContent      = data.frame >= 0 ? data.frame : '-';
+      document.getElementById('val-race').textContent       = data.race       || '-';
+      document.getElementById('val-enemy-race').textContent = data.enemy_race || '-';
+      document.getElementById('val-opening').textContent    = data.opening    || '-';
+      document.getElementById('val-mode').textContent       = data.mode       || '-';
+      document.getElementById('val-late').textContent       = data.late_game  || '-';
+
+      renderStrategies(data.strategies, data.opening);
+      renderRxLog(data.rx_log || []);
+      renderTxLog(data.tx_log || []);
+
+      const rxLen = (data.rx_log || []).length;
+      const txLen = (data.tx_log || []).length;
+      document.getElementById('rx-count').textContent = rxLen ? `(${rxLen})` : '';
+      document.getElementById('tx-count').textContent = txLen ? `(${txLen})` : '';
+    }
+
+    /* ── DLL → Django 수신 로그 렌더 ── */
+    function renderRxLog(entries) {
+      const sig = logSig(entries);
+      if (sig === lastRxSig) return;   // 변경 없으면 DOM 건드리지 않음
+      lastRxSig = sig;
+      const container = document.getElementById('log-rx');
+      const atTop = container.scrollTop < 40;
+      container.innerHTML = '';
+      entries.forEach(e => {
+        const div = document.createElement('div');
+        div.className = 'log-entry';
+        const detail = formatPayload(e.payload || {});
+        div.innerHTML =
+          `<span class="log-ts">${e.ts || ''}</span>` +
+          `<span class="log-frame">f:${e.frame ?? ''}</span>` +
+          `<span class="log-event">${e.event}</span>` +
+          `<span class="log-detail">${detail}</span>`;
+        container.appendChild(div);
+      });
+      if (atTop) container.scrollTop = 0;
+    }
+
+    /* ── Django → DLL 송신 로그 렌더 ── */
+    function renderTxLog(entries) {
+      const sig = logSig(entries);
+      if (sig === lastTxSig) return;   // 변경 없으면 DOM 건드리지 않음
+      lastTxSig = sig;
+      const container = document.getElementById('log-tx');
+      const atTop = container.scrollTop < 40;
+      container.innerHTML = '';
+      entries.forEach(e => {
+        const div = document.createElement('div');
+        div.className = 'log-entry';
+        const detail = formatPayload(e.payload || {});
+        div.innerHTML =
+          `<span class="log-ts">${e.ts || ''}</span>` +
+          `<span class="log-type">${e.type}</span>` +
+          `<span class="log-detail">${detail}</span>`;
+        container.appendChild(div);
+      });
+      if (atTop) container.scrollTop = 0;
+    }
+
+    function formatPayload(obj) {
+      return Object.entries(obj)
+        .map(([k, v]) => `<span style="color:var(--muted)">${k}:</span> ${String(v).substring(0, 80)}`)
+        .join('  ');
+    }
+
+    async function poll() {
+      try {
+        const resp = await fetch('/api/status/');
+        if (resp.ok) updateUI(await resp.json());
+      } catch (_) {}
+      setTimeout(poll, 1000);
+    }
+
+    async function setStrategy(name) {
+      const body = name === 'auto' ? { strategy: 'auto' } : { strategy_unit: name };
+      try {
+        const resp = await fetch('/api/strategy/set/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const data = await resp.json();
+        if (data.ok) {
+          showToast('전략 전송: ' + (data.strategy || name));
+        } else {
+          showToast(data.error || '전송 실패', true);
+        }
+      } catch (e) {
+        showToast('서버 오류', true);
+      }
+    }
+
+    async function sendChat() {
+      const input = document.getElementById('chat-input');
+      const text  = input.value.trim();
+      if (!text) return;
+      try {
+        const resp = await fetch('/api/send_text/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text })
+        });
+        const data = await resp.json();
+        if (data.ok) {
+          showToast('채팅 전송 완료');
+          input.value = '';
+        } else {
+          showToast('전송 실패', true);
+        }
+      } catch (_) {
+        showToast('서버 오류', true);
+      }
+    }
+
+    async function leaveGame() {
+      if (!confirm('정말 게임에서 나가시겠습니까?')) return;
+      const resp = await fetch('/api/leave_game/', { method: 'POST' });
+      const data = await resp.json();
+      showToast(data.ok ? '게임 나가기 전송' : '전송 실패', !data.ok);
+    }
+
+    poll();
+  </script>
+</body>
+</html>

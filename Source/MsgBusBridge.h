@@ -27,6 +27,12 @@ public:
   void flush_pending_events();
   void process_pending_actions();
 
+  void send_action(const std::string& action);
+
+  // Strategy command support
+  std::string get_pending_strategy() const;
+  void clear_pending_strategy();
+
   static std::string escape_json(const std::string& s);
 
 private:
@@ -39,9 +45,10 @@ private:
   uintptr_t send_sock_ = ~uintptr_t(0);
   uintptr_t recv_sock_ = ~uintptr_t(0);
   char agent_addr_[16] = {};
-  std::mutex queue_mutex_;
+  mutable std::mutex queue_mutex_;
   std::deque<std::string> pending_event_packets_;
   std::deque<std::string> pending_action_packets_;
+  std::string pending_strategy_;
 
   static std::string payload_to_json(const std::map<std::string, std::string>& payload);
   static std::string build_message(const std::string& event_name,
