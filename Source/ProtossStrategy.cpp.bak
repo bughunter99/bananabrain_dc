@@ -2,7 +2,7 @@
 
 std::string ProtossStrategy::available_openings_csv(bool is_1v1) const
 {
-	//if (!is_1v1) return kPvU_1012Gate;
+	if (!is_1v1) return kPvU_1012Gate;
 
 	Race race = opponent_model.enemy_race();
 	std::vector<const char*> list;

@@ -1,28 +1,5 @@
 #include "BananaBrain.h"
 
-std::string ZergStrategy::available_openings_csv(bool is_1v1) const
-{
-	//if (!is_1v1) return kZvU_9PoolSpeed;
-
-	Race race = opponent_model.enemy_race();
-	std::vector<const char*> list;
-	if (race == Races::Zerg) {
-		list = {kZvZ_4Pool,kZvZ_5Pool,kZvZ_2HatchLing,kZvZ_3HatchLing,kZvZ_9HatchLing,kZvZ_9PoolSpire,kZvZ_9Gas9Pool,kZvZ_9Gas10Pool,kZvZ_11Gas10Pool,kZvZ_OverGas,kZvZ_OverPool9Gas,kZvZ_10Hatch,kZvZ_12Pool,KZvZ_12PoolMain,kZvZ_Hydra};
-	} else if (race == Races::Terran) {
-		list = {kZvT_4Pool,kZvT_5Pool,kZvT_7Pool,kZvT_2HatchLing,kZvT_3HatchLing,kZvT_9HatchLing,kZvT_2HatchMuta_12Hatch,kZvT_2HatchMuta_12Pool,kZvT_2_5HatchMuta,kZvT_3HatchMuta,kZvT_CrazyZerg,kZvT_13PoolMuta,kZvT_MutaHydra,kZvT_9PoolLurker,kZvT_3HatchLurker};
-	} else if (race == Races::Protoss) {
-		list = {kZvP_5Pool,kZvP_2HatchLing,kZvP_3HatchLing,kZvP_9HatchLing,kZvP_10HatchLing,kZvP_2HatchMuta,kZvP_3HatchMuta,kZvP_2HatchHydra,kZvP_9734,kZvP_10PoolLurker,kZvP_3HatchLurker,kZvP_NeoSauron,kZvP_4HatchBeforeGas,kZvP_5HatchBeforeGas,kZvP_6Hatch};
-	} else {
-		list = {kZvU_4Pool,kZvU_5Pool,kZvU_2HatchLing,kZvU_3HatchLing,kZvU_9HatchLing,kZvU_9PoolSpeed,kZvU_11Pool};
-	}
-	std::string csv;
-	for (size_t i = 0; i < list.size(); ++i) {
-		if (i > 0) csv += ',';
-		csv += list[i];
-	}
-	return csv;
-}
-
 void ZergStrategy::pick_strategy(bool is_1v1)
 {
 	if (!is_1v1) {

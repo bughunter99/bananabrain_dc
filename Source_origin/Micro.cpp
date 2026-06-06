@@ -354,7 +354,6 @@ void MicroManager::apply_transport_orders()
 	loading_units_.clear();
 	std::set<Unit> unpaired_reavers = determine_unpaired_reavers();
 	for (auto& transport_unit : transports_) {
-		if (transport_unit->isSelected()) continue;
 		bool order_issued = false;
 		TransportState& state = transport_state_[transport_unit];
 		CombatState& combat_state = combat_state_.at(transport_unit);
@@ -753,7 +752,6 @@ void MicroManager::apply_combat_unit_orders()
 	std::vector<Unit> nearby_friendly_ground;
 	for (auto& combat_unit : combat_units_) {
 		if (loading_units_.count(combat_unit) > 0) continue;
-		if (combat_unit->isSelected()) continue;
 		UnitType unit_type = combat_unit->getType();
 		
 		UnstickState& state = unstick_state_[combat_unit];
@@ -1565,8 +1563,6 @@ void MicroManager::apply_air_to_air_unit_orders()
 	std::vector<Unit> enemy_air_units;
 	std::vector<Unit> enemy_other_units;
 	for (auto& unit : all_enemy_units_) {
-		if (unit->isSelected()) continue;
-
 		if (can_attack(unit, true)) {
 			if (unit->isFlying() && !unit->isInvincible()) {
 				enemy_air_units.push_back(unit);
@@ -1579,8 +1575,6 @@ void MicroManager::apply_air_to_air_unit_orders()
 	
 	remove_missing_keys(air_to_air_targets_, air_to_air_units_);
 	for (auto& combat_unit : air_to_air_units_) {
-		if (combat_unit->isSelected()) continue;
-
 		bool order_issued = false;
 		if (!order_issued) {
 			order_issued = unit_potential(combat_unit, [&enemy_other_units](UnitPotential& potential){
@@ -2546,8 +2540,6 @@ void MicroManager::apply_medic_orders()
 {
 	std::set<Unit> units_being_healed;
 	for (auto& special_unit : medics_) {
-		if (special_unit->isSelected()) continue;
-
 		if (special_unit->getOrderTarget() != nullptr &&
 			special_unit->getOrderTarget()->exists() &&
 			special_unit->getOrderTarget()->getType().isOrganic()) {
@@ -2710,8 +2702,6 @@ void MicroManager::apply_comsat_station_orders()
 	std::set<Unit> casting_comsats;
 	for (auto& tentative_scan : tentative_scans_) casting_comsats.insert(tentative_scan.unit);
 	for (auto& comsat_unit : comsat_stations_) {
-		if (comsat_unit->isSelected()) continue;
-
 		if (casting_comsats.count(comsat_unit) > 0) continue;
 		bool order_issued = false;
 		if (!order_issued && comsat_unit->getEnergy() >= TechTypes::Scanner_Sweep.energyCost()) {
@@ -6351,7 +6341,6 @@ bool MicroManager::runby_possible()
 {
 	std::set<Unit> runby_units;
 	for (auto& unit : Broodwar->self()->getUnits()) {
-		if (unit->isSelected()) continue;
 		if (unit->isCompleted() && unit->isVisible() && !is_disabled(unit) && !unit->isLoaded() &&
 			is_runby_unit_type(unit->getType())) {
 			runby_units.insert(unit);
@@ -6364,7 +6353,6 @@ bool MicroManager::runby_possible(const std::set<Unit>& units)
 {
 	std::set<Unit> runby_units;
 	for (auto& unit : units) {
-		if (unit->isSelected()) continue;
 		if (unit->isCompleted() && unit->isVisible() && !is_disabled(unit) && !unit->isLoaded() &&
 			is_runby_unit_type(unit->getType())) {
 			runby_units.insert(unit);

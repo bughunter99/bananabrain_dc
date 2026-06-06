@@ -523,7 +523,6 @@ TilePosition BuildingPlacementManager::place_pylon(const TileGrid<bool>& blocked
 		
 		if (!candidate.isValid()) continue;
 		if (!tile_in_controlled_area(candidate, start_area)) continue;
-		if (start_location.getApproxDistance(candidate) > 10) continue;
 		
 		if (test_building_location(blocked, resource_blocked, UnitTypes::Protoss_Pylon, candidate) &&
 			test_distance_from_existing_pylons(pylon_positions, candidate) &&

@@ -4,10 +4,8 @@
 
 void BananaBrain::onStart()
 {
-	MsgBusBridge::Instance().start();
-
 	// Enable the UserInput flag, which allows us to control the bot and type messages.
-	Broodwar->enableFlag(Flag::UserInput);
+	//Broodwar->enableFlag(Flag::UserInput);
  
 	if (!Broodwar->isReplay())
 	{
@@ -61,31 +59,6 @@ void BananaBrain::onStart()
 			spending_manager.init_resource_counters();
 			if (is_1v1_) result_store.init();
 			strategy_->pick_strategy(is_1v1_);
-
-			// Check if Django has already sent a strategy selection
-			{
-				std::string pending = MsgBusBridge::Instance().get_pending_strategy();
-				if (!pending.empty()) {
-					strategy_->set_opening(pending);
-					MsgBusBridge::Instance().clear_pending_strategy();
-				}
-			}
-
-			// Notify Django of available strategies and the selected opening
-			{
-				const std::string race_str = Broodwar->self()->getRace().getName();
-				std::string enemy_race_str = "Unknown";
-				if (!Broodwar->enemies().empty())
-					enemy_race_str = (*Broodwar->enemies().begin())->getRace().getName();
-				MsgBusBridge::Instance().send_event("strategy_list", {
-					{"strategies", strategy_->available_openings_csv(is_1v1_)},
-					{"selected", strategy_->opening()},
-					{"race", race_str},
-					{"enemy_race", enemy_race_str}
-				});
-				MsgBusBridge::Instance().flush_pending_events();
-			}
-
 			walkability_grid.init();
 			room_grid.init();
 			worker_manager.init_optimal_mining_data();
@@ -103,15 +76,12 @@ void BananaBrain::onEnd(bool winner)
 		result_store.store();
 	}
 	worker_manager.store_optimal_mining_data();
-	MsgBusBridge::Instance().send_event("onEnd", {{"winner", winner ? "true" : "false"}});
-	MsgBusBridge::Instance().stop();
 }
 
 void BananaBrain::onFrame()
 {
 	if (!initialized_) return;
 	if (Broodwar->isPaused() || !Broodwar->self()) return;
-	//if (!Broodwar->getSelectedUnits().empty()) return;
 	if (configuration.human_opponent() && Broodwar->getFrameCount() == 240) Broodwar->sendText("glhf");
 	
 	PerformanceTimer performance_timer;
@@ -131,39 +101,18 @@ void BananaBrain::onFrame()
 		}
 		Broodwar->drawTextScreen(4, 16, "Frame duration: %d ms, max %d ms, frame zero %d ms", duration, max_duration_, frame_zero_duration_);
 	}
-	// Send periodic status to web every 5 seconds
-	if (strategy_ && Broodwar->getFrameCount() % (5 * 24) == 0) {
-		MsgBusBridge::Instance().send_event("status", {
-			{"opening", strategy_->opening()},
-			{"mode", strategy_->mode()},
-			{"late_game", strategy_->late_game_strategy()},
-			{"frame", std::to_string(Broodwar->getFrameCount())}
-		});
-		MsgBusBridge::Instance().flush_pending_events();
-	}
 }
 
 void BananaBrain::onSendText(std::string text)
 {
-	MsgBusBridge::Instance().send_event("send_text", {{"text", text}});
-	MsgBusBridge::Instance().flush_pending_events();
 }
 
 void BananaBrain::onReceiveText(BWAPI::Player player, std::string text)
 {
-	MsgBusBridge::Instance().send_event("receive_text", {
-		{"player", player ? player->getName() : "unknown"},
-		{"text", text}
-	});
-	MsgBusBridge::Instance().flush_pending_events();
 }
 
 void BananaBrain::onPlayerLeft(BWAPI::Player player)
 {
-	MsgBusBridge::Instance().send_event("player_left", {
-		{"player", player ? player->getName() : "unknown"}
-	});
-	MsgBusBridge::Instance().flush_pending_events();
 }
 
 void BananaBrain::onNukeDetect(BWAPI::Position target)
@@ -240,30 +189,6 @@ void BananaBrain::draw() {
 
 void BananaBrain::before()
 {
-	// Receive and process actions from Django
-	MsgBusBridge::Instance().poll_actions();
-	MsgBusBridge::Instance().process_pending_actions();
-
-	// Apply strategy override sent from Django (via strategy_command action)
-	{
-		std::string pending = MsgBusBridge::Instance().get_pending_strategy();
-		if (!pending.empty() && strategy_) {
-			strategy_->set_opening(pending);
-			MsgBusBridge::Instance().clear_pending_strategy();
-			MsgBusBridge::Instance().send_event("strategy_changed", {{"opening", pending}});
-			MsgBusBridge::Instance().flush_pending_events();
-
-			MsgBusBridge::Instance().send_event("status", {
-			{"opening", strategy_->opening()},
-			{"pending", pending},
-			{"mode", strategy_->mode()},
-			{"late_game", strategy_->late_game_strategy()},
-			{"frame", std::to_string(Broodwar->getFrameCount())}
-				});
-			MsgBusBridge::Instance().flush_pending_events();
-		}
-	}
-
 	information_manager.update_units_and_buildings();
 	walkability_grid.update();
 	connectivity_grid.update();
@@ -281,7 +206,6 @@ void BananaBrain::before()
 	threat_grid.update();
 	micro_manager.prepare_combat();
 	worker_manager.before();
-	MsgBusBridge::Instance().flush_pending_events();
 }
 
 void BananaBrain::after()

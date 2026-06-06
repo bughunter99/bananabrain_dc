@@ -1,28 +1,5 @@
 #include "BananaBrain.h"
 
-std::string TerranStrategy::available_openings_csv(bool is_1v1) const
-{
-	//if (!is_1v1) return kTvU_1Fact;
-
-	Race race = opponent_model.enemy_race();
-	std::vector<const char*> list;
-	if (race == Races::Zerg) {
-		list = {kTvZ_Fantasy,kTvZ_Sparks,kTvZ_Ayumi,kTvZ_1RaxFE,kTvZ_2Rax,kTvZ_14CC,kTvZ_3FactGoliath,kTvZ_5FactGoliath,kTvZ_2PortWraithBio,kTvZ_2PortWraithMech,kTvZ_8RaxMech,kTvZ_BBS,kTvZ_ProxyBBS};
-	} else if (race == Races::Terran) {
-		list = {kTvT_2FactVults,kTvT_3FactVults,kTvT_1FactFE,kTvT_1RaxFE,kTvT_14CC,kTvT_1RaxFEBioMech,kTvT_2RaxBioMech,kTvT_1PortWraith,kTvT_2PortWraith,kTvT_Proxy5Rax,kTvT_8RaxMech,kTvT_BBS,kTvT_ProxyBBS};
-	} else if (race == Races::Protoss) {
-		list = {kTvP_2FactVults,kTvP_GundamRush,kTvP_JoyORush,kTvP_ShallowTwo,kTvP_DeepSix,kTvP_SiegeExpand,kTvP_1FactFE,kTvP_1RaxFE,KTvP_14CC,kTvP_StrongFD,kTvP_101010FD,kTvP_BBS,kTvP_ProxyBBS};
-	} else {
-		list = {kTvU_1Fact,kTvU_1FactMech,kTvU_2Rax,kTvU_BBS,kTvU_ProxyBBS};
-	}
-	std::string csv;
-	for (size_t i = 0; i < list.size(); ++i) {
-		if (i > 0) csv += ',';
-		csv += list[i];
-	}
-	return csv;
-}
-
 void TerranStrategy::pick_strategy(bool is_1v1)
 {
 	if (!is_1v1) {

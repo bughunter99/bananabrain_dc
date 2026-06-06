@@ -2,7 +2,7 @@
 
 std::string TerranStrategy::available_openings_csv(bool is_1v1) const
 {
-	//if (!is_1v1) return kTvU_1Fact;
+	if (!is_1v1) return kTvU_1Fact;
 
 	Race race = opponent_model.enemy_race();
 	std::vector<const char*> list;

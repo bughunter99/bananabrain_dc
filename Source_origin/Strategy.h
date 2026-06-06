@@ -8,8 +8,6 @@ public:
 	virtual std::string opening() const = 0;
 	virtual std::string late_game_strategy() const = 0;
 	virtual void frame_inner() = 0;
-	virtual void set_opening(const std::string& /*opening*/) {}
-	virtual std::string available_openings_csv(bool /*is_1v1*/) const { return ""; }
 	
 	void apply_result(bool win);
 	void frame();
@@ -162,8 +160,6 @@ public:
 	std::string opening() const override { return opening_; }
 	std::string late_game_strategy() const override;
 	void frame_inner() override;
-	void set_opening(const std::string& opening) override { opening_ = opening; }
-	std::string available_openings_csv(bool is_1v1) const override;
 	
 private:
 	Mode mode_ = Mode::Opening;
@@ -357,8 +353,6 @@ public:
 	};
 	
 	void pick_strategy(bool is_1v1) override;
-    void set_opening(const std::string& opening) override { opening_ = opening; }
-	std::string available_openings_csv(bool is_1v1) const override;
 	std::string mode() const override;
 	std::string opening() const override { return opening_; }
 	std::string late_game_strategy() const override { return "none"; }
@@ -529,8 +523,6 @@ public:
 	};
 	
 	void pick_strategy(bool is_1v1) override;
-    void set_opening(const std::string& opening) override { opening_ = opening; }
-	std::string available_openings_csv(bool is_1v1) const override;
 	std::string mode() const override;
 	std::string opening() const override { return opening_; }
 	std::string late_game_strategy() const override { return "none"; }

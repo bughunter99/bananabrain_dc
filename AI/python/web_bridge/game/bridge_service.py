@@ -84,6 +84,7 @@ def _handle_event(raw: str):
     event   = msg.get('event', '')
     frame   = msg.get('frame', -1)
     payload = msg.get('payload', {})
+    print(msg)
 
     with _state_lock:
         _game_state['connected'] = True
@@ -97,6 +98,13 @@ def _handle_event(raw: str):
             _game_state['opening']   = payload.get('opening', _game_state['opening'])
             _game_state['mode']      = payload.get('mode',    _game_state['mode'])
             _game_state['late_game'] = payload.get('late_game', _game_state['late_game'])
+            _game_state['all'] = str(payload)
+
+        elif event == 'strategy_changed':
+            # 전략 변경이 즉시 반영되도록 opening 갱신
+            new_opening = payload.get('opening', '')
+            if new_opening:
+                _game_state['opening'] = new_opening
 
         elif event == 'strategy_list':
             raw_csv = payload.get('strategies', '')

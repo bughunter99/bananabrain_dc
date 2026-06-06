@@ -80,7 +80,7 @@ int WorkerAllocation::max_workers() const
 {
 	int mineral_count = int(mineral_map_.size());
 	int refinery_count = int(refinery_map_.size());
-	return int(mineral_count * 2) + refinery_count * 3;
+	return int(mineral_count * 1.5) + refinery_count * 3;
 }
 
 double WorkerAllocation::average_workers_per_mineral() const

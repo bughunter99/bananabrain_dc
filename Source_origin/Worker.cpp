@@ -80,7 +80,7 @@ int WorkerAllocation::max_workers() const
 {
 	int mineral_count = int(mineral_map_.size());
 	int refinery_count = int(refinery_map_.size());
-	return int(mineral_count * 2) + refinery_count * 3;
+	return 3 * (mineral_count + refinery_count);
 }
 
 double WorkerAllocation::average_workers_per_mineral() const
@@ -104,7 +104,6 @@ Worker::Worker(Unit unit) : unit_(unit), order_(new IdleWorkerOrder(*this))
 
 void Worker::apply_orders()
 {
-	if (unit_->isSelected()) return;
 	order_->apply_orders();
 }
 

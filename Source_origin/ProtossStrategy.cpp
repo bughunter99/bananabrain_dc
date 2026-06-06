@@ -1,28 +1,5 @@
 #include "BananaBrain.h"
 
-std::string ProtossStrategy::available_openings_csv(bool is_1v1) const
-{
-	//if (!is_1v1) return kPvU_1012Gate;
-
-	Race race = opponent_model.enemy_race();
-	std::vector<const char*> list;
-	if (race == Races::Zerg) {
-		list = {kPvZ_SairDt,kPvZ_1012Gate,kPvZ_1BaseSpeedZeal,kPvZ_2BaseSpeedZeal,kPvZ_Bisu,kPvZ_NeoBisu,kPvZ_4Gate2Archon,kPvZ_5GateGoon,kPvZ_SairGoon,kPvZ_SairReaver,kPvZ_Stove,kPvZ_4GateGoon,kPvZ_99Gate,kPvZ_99ProxyGate};
-	} else if (race == Races::Terran) {
-		list = {kPvT_1012Gate,kPvT_2GateDt,kPvT_1GateDtExpo,kPvT_2GateRngExpo,kPvT_1GateReaver,kPvT_1015Gate,kPvT_Bulldog,kPvT_12Nexus,kPvT_28Nexus,kPvT_32Nexus,kPvT_DtDrop,kPvT_Stove,kPvT_4GateGoon,kPvT_99Gate,kPvT_99ProxyGate};
-	} else if (race == Races::Protoss) {
-		list = {kPvP_NZCore,kPvP_ZCore,kPvP_ZZCore,kPvP_ZCoreZ,kPvP_1012Gate,kPvP_1012GateDt,kPvP_2GateDtExpo,kPvP_2GateReaver,kPvP_3GateRobo,kPvP_3GateSpeedZeal,kPvP_4GateGoon,kPvP_12Nexus,kPvP_99Gate,kPvP_99ProxyGate};
-	} else {
-		list = {kPvU_1012Gate,kPvU_99Gate,kPvU_99ProxyGate,kPvU_4GateGoon,kPvU_Forge};
-	}
-	std::string csv;
-	for (size_t i = 0; i < list.size(); ++i) {
-		if (i > 0) csv += ',';
-		csv += list[i];
-	}
-	return csv;
-}
-
 void ProtossStrategy::pick_strategy(bool is_1v1)
 {
 	if (!is_1v1) {
@@ -2594,6 +2571,11 @@ void ProtossStrategy::opening_PvX_Stove()
 	if (opponent_model.enemy_opening() == EnemyOpening::T_ProxyRax ||
 		opponent_model.enemy_opening() == EnemyOpening::T_BBS ||
 		opponent_model.enemy_opening() == EnemyOpening::T_2Rax) {
+		for (auto& unit : Broodwar->self()->getUnits()) {
+			if (unit->getType() == UnitTypes::Protoss_Stargate && unit->isCompleted() && !unit->getTrainingQueue().empty()) {
+				unit->cancelTrain();
+			}
+		}
 		building_manager.cancel_buildings_of_type(UnitTypes::Protoss_Stargate);
 		mode_ = Mode::Main;
 		return;
